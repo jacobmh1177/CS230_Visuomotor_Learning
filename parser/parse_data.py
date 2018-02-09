@@ -9,7 +9,7 @@ class struct():
 
 def parse_data(save=True):
 	path = struct()
-	path.data_folder = 'TeleOpVRSession_2018-02-05_15-44-11/'
+	path.data_folder = 'datasets/TeleOpVRSession_2018-02-05_15-44-11/'
 	path.data_name = '_SessionStateData.proto'
 	data = parse_protobufs(path)
 
