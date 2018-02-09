@@ -1,15 +1,20 @@
+import os
+
 import numpy as np
 import cv2
 import sklearn.model_selection as sk
 from analysis import parse_protobufs
 from ipdb import set_trace as debug
 
+DATASETS_ROOT = 'datasets'
+DATASET_NAME = 'TeleOpVRSession_2018-02-05_15-44-11/'
+
 class struct():
 	pass
 
 def parse_data(save=True):
 	path = struct()
-	path.data_folder = 'datasets/TeleOpVRSession_2018-02-05_15-44-11/'
+	path.data_folder = os.path.join(DATASETS_ROOT, DATASET_NAME)
 	path.data_name = '_SessionStateData.proto'
 	data = parse_protobufs(path)
 
@@ -22,14 +27,19 @@ def parse_data(save=True):
 
 	# format labels into n x 6 array
 	for i in range(10):
-		print i
+		print('Image {}'.format(i))
 		num_items.append(len(data.states[i].items))
 		img_name = str(data.states[i].snapshot.name)
 		depth_name = img_name[:-4] + '-Depth.jpg'
 
 		# read in rgb and depth images and add a new axis to them to indicate which snapshot index for each image
-		rgb_img = np.expand_dims(cv2.imread(img_name, 1), axis=0)
-		depth_img = np.expand_dims(cv2.imread(depth_name, 0), axis = 0)
+		rgb_img = np.expand_dims(
+			cv2.imread(os.path.join(DATASETS_ROOT, img_name), 1),
+			axis=0
+		)
+		depth_img = np.expand_dims(
+			cv2.imread(os.path.join(DATASETS_ROOT, depth_name), 0),
+			axis = 0)
 
 		for j in range(num_items[i]):
 			# input data (X)
