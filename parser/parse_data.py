@@ -2,31 +2,32 @@ import os
 
 import numpy as np
 import cv2
-import sklearn.model_selection as sk
 from analysis import parse_protobufs
 from ipdb import set_trace as debug
 
+
 DATASETS_ROOT = 'datasets'
 DATASET_NAME = 'TeleOpVRSession_2018-02-05_15-44-11/'
+MINI_BATCH_SIZE = 100
+
 
 class struct():
 	pass
 
-def parse_data(save=True):
+def extract_data_from_proto():
 	path = struct()
 	path.data_folder = os.path.join(DATASETS_ROOT, DATASET_NAME)
 	path.data_name = '_SessionStateData.proto'
 	data = parse_protobufs(path)
+	return data
 
-	# example data extraction of x value of object/item 0 in training example 0: data.states[0].items[0].x
-	num_examples = len(data.states) # number or screenshots
+def parse_data_mini_batch(data, batch_index, save=True):
 	num_items = []  # number of items in each example
 	labels = []
-	X_rgb = np.empty([0,299,299,3])
-	X_d = np.empty([0,299,299])
-
-	# format labels into n x 6 array
-	for i in range(10):
+	X_rgb = []
+	X_d = []
+	num_items_index = 0
+	for i in range(batch_index * MINI_BATCH_SIZE, (batch_index + 1) * MINI_BATCH_SIZE):
 		print('Image {}'.format(i))
 		num_items.append(len(data.states[i].items))
 		img_name = str(data.states[i].snapshot.name)
@@ -39,33 +40,35 @@ def parse_data(save=True):
 		)
 		depth_img = np.expand_dims(
 			cv2.imread(os.path.join(DATASETS_ROOT, depth_name), 0),
-			axis = 0)
+			axis=0)
 
-		for j in range(num_items[i]):
+		for j in range(num_items[num_items_index]):
 			# input data (X)
-			X_rgb = np.vstack([X_rgb, rgb_img])
-			X_d = np.vstack([X_d, depth_img])
+			X_rgb.append(rgb_img)
+			X_d.append(depth_img)
 
 			# Output label (Y)
-			rlabel = data.states[i].items[j] 
-			current_label = [data.states[i].snapshot.name, rlabel.x, rlabel.y, rlabel.z, rlabel.roll, rlabel.pitch, rlabel.yaw]
+			rlabel = data.states[i].items[j]
+			current_label = [data.states[i].snapshot.name, rlabel.x, rlabel.y, rlabel.z, rlabel.roll, rlabel.pitch,
+							 rlabel.yaw]
 			labels.append(current_label)
-
+		num_items_index += 1
 
 	# convert to numpy array
+	X_rgb = np.array(X_rgb).reshape((-1, 299, 299, 3))
+	X_d = np.array(X_d).reshape((-1, 299, 299))
 	y = np.array(labels)
 
 	if save:
-		save_path = 'data/'
-		np.save(save_path + "X_rgb.npy", X_rgb)
-		np.save(save_path + "X_d.npy", X_d)
-		np.save(save_path + "y.npy", y)
-
-	return X_rgb, X_d, y
-
+		save_path = 'datasets/parsed_data/'
+		np.save(save_path + "batch_{}_X_rgb.npy".format(batch_index + 1), X_rgb)
+		np.save(save_path + "batch_{}_X_d.npy".format(batch_index + 1), X_d)
+		np.save(save_path + "batch_{}_y.npy".format(batch_index + 1), y)
 
 if __name__ == '__main__':
-	X_rgb, X_d, y = parse_data(save=False)
-	X = (np.concatenate((X_rgb,np.expand_dims(X_d, axis=3)), axis=3))
-	X_train, X_test, y_train, y_test = sk.train_test_split(X,y,test_size=.3, random_state=42)	# random_state=42 ensure indices are same for train/test set for X_rgb and X_d since they must match
+	data = extract_data_from_proto()
+	num_mini_batches = len(data.states) / MINI_BATCH_SIZE
+	for batch_index in range(num_mini_batches):
+		print("Parsing data for batch #{}".format(batch_index))
+		parse_data_mini_batch(data, batch_index, save=True)
 
