@@ -50,7 +50,7 @@ def parse_data_mini_batch(data, batch_index, save=True):
 			# Output label (Y)
 			rlabel = data.states[i].items[j]
 			current_label = [data.states[i].snapshot.name, rlabel.x, rlabel.y, rlabel.z, rlabel.roll, rlabel.pitch,
-							 rlabel.yaw]
+							 rlabel.yaw, rlabel.id]
 			labels.append(current_label)
 		num_items_index += 1
 
@@ -71,4 +71,5 @@ if __name__ == '__main__':
 	for batch_index in range(num_mini_batches):
 		print("Parsing data for batch #{}".format(batch_index))
 		parse_data_mini_batch(data, batch_index, save=True)
+		exit(0)
 
