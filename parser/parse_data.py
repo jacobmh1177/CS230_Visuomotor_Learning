@@ -71,5 +71,3 @@ if __name__ == '__main__':
 	for batch_index in range(num_mini_batches):
 		print("Parsing data for batch #{}".format(batch_index))
 		parse_data_mini_batch(data, batch_index, save=True)
-		exit(0)
-
