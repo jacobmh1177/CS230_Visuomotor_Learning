@@ -33,6 +33,7 @@ def parse_data_mini_batch(data, batch_index, save=True):
 	num_items_index = 0
 	for i in range(batch_index * MINI_BATCH_SIZE, (batch_index + 1) * MINI_BATCH_SIZE):
 		print('Image {}'.format(i))
+		keep_example = True
 		num_items.append(len(data.states[i].items))
 		scene_rgb_name = str(data.states[i].snapshot.name)
 		scene_depth_name = scene_rgb_name[:-4] + '-Depth.jpg'
@@ -49,6 +50,9 @@ def parse_data_mini_batch(data, batch_index, save=True):
 		)
 
 		for j in range(num_items[num_items_index]):
+			rlabel = data.states[i].items[j]
+			if rlabel.id == 20:
+				continue
 			obj_rgb_name = os.path.join(DATASETS_ROOT, OBJ_DATABASE_NAME, "object_" + str(rlabel.id) + ".jpg")
 			obj_depth_name = os.path.join(DATASETS_ROOT, OBJ_DATABASE_NAME, "object_" + str(rlabel.id) + "-Depth.jpg")
 			obj_rgb_img = np.expand_dims(
@@ -62,11 +66,13 @@ def parse_data_mini_batch(data, batch_index, save=True):
 			# input data (X)
 			X_scene_rgb.append(scene_rgb_img)
 			X_scene_d.append(scene_depth_img)
+			# if scene_rgb_img.shape != obj_rgb_img.shape: # Work-around for missing images
+			# 	obj_rgb_img = np.zeros_like(scene_rgb_img)
+			# 	obj_depth_img = np.zeros_like(scene_depth_img)
 			X_obj_rgb.append(obj_rgb_img)
 			X_obj_d.append(obj_depth_img)
 
 			# Output label (Y)
-			rlabel = data.states[i].items[j]
 			current_meta_data = [data.states[i].snapshot.name, rlabel.id]
 			current_label = [rlabel.x, rlabel.y, rlabel.z, rlabel.roll, rlabel.pitch,
 							 rlabel.yaw]
@@ -75,9 +81,11 @@ def parse_data_mini_batch(data, batch_index, save=True):
 		num_items_index += 1
 
 	# convert to numpy array
+	#print np.array(X_scene_rgb).shape
 	X_scene_rgb = np.array(X_scene_rgb).reshape((-1, 299, 299, 3))
 	X_scene_d = np.array(X_scene_d).reshape((-1, 299, 299))
-	X_obj_rgb = np.array(X_obj_rgb).reshape((-1, 299, 299))
+	#print np.array(X_obj_rgb).shape
+	X_obj_rgb = np.array(X_obj_rgb).reshape((-1, 299, 299, 3))
 	X_obj_d= np.array(X_obj_d).reshape((-1, 299, 299))
 	y = np.array(labels)
 	meta = np.array(meta_data)
