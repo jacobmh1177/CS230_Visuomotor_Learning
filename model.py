@@ -6,6 +6,10 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+def compute_convolved_image_width(input_width, filter_width, stride, padding):
+    return int(np.floor(1 + (input_width + 2 * padding - filter_width) / stride))
+
+
 class Net(nn.Module):
     """
     This is the standard way to define your own network in PyTorch. You typically choose the components
@@ -69,28 +73,34 @@ class Net(nn.Module):
         Note: the dimensions after each step are provided
         """
         # Split input into scene and object
-        s = data[:, :, :, :4]
-        o = data[:, :, :, 4:]
+        s = data[:, :4, :, :]
+        o = data[:, 4:, :, :]
         #                                                  -> batch_size x 3 x 64 x 64
         # we apply the convolution layers, followed by batch normalisation, maxpool and relu x 3
-        s = self.bn1(self.conv1(s))  # batch_size x num_channels x 64 x 64
+        s = self.bn1_s(self.conv1_s(s))  # batch_size x num_channels x 64 x 64
+        output_width = compute_convolved_image_width(299, 3, 1, 1)
         s = F.relu(F.max_pool2d(s, 2))  # batch_size x num_channels x 32 x 32
-        s = self.bn2(self.conv2(s))  # batch_size x num_channels*2 x 32 x 32
+        output_width = compute_convolved_image_width(output_width, 2, 2, 0)
+        s = self.bn2_s(self.conv2_s(s))  # batch_size x num_channels*2 x 32 x 32
+        output_width = compute_convolved_image_width(output_width, 3, 1, 1)
         s = F.relu(F.max_pool2d(s, 2))  # batch_size x num_channels*2 x 16 x 16
-        s = self.bn3(self.conv3(s))  # batch_size x num_channels*4 x 16 x 16
+        output_width = compute_convolved_image_width(output_width, 2, 2, 0)
+        s = self.bn3_s(self.conv3_s(s))  # batch_size x num_channels*4 x 16 x 16
+        output_width = compute_convolved_image_width(output_width, 3, 1, 1)
         s = F.relu(F.max_pool2d(s, 2))  # batch_size x num_channels*4 x 8 x 8
+        output_width = compute_convolved_image_width(output_width, 2, 2, 0)
 
         # we apply the convolution layers, followed by batch normalisation, maxpool and relu x 3
-        o = self.bn1(self.conv1(o))  # batch_size x num_channels x 64 x 64
+        o = self.bn1_o(self.conv1_o(o))  # batch_size x num_channels x 64 x 64
         o = F.relu(F.max_pool2d(o, 2))  # batch_size x num_channels x 32 x 32
-        o = self.bn2(self.conv2(o))  # batch_size x num_channels*2 x 32 x 32
+        o = self.bn2_o(self.conv2_o(o))  # batch_size x num_channels*2 x 32 x 32
         o = F.relu(F.max_pool2d(o, 2))  # batch_size x num_channels*2 x 16 x 16
-        o = self.bn3(self.conv3(o))  # batch_size x num_channels*4 x 16 x 16
+        o = self.bn3_o(self.conv3_o(o))  # batch_size x num_channels*4 x 16 x 16
         o = F.relu(F.max_pool2d(o, 2))  # batch_size x num_channels*4 x 8 x 8
 
         # flatten the output for each image
-        s = s.view(-1, 8 * 8 * self.num_channels * 4)  # batch_size x 8*8*num_channels*4
-        o = o.view(-1, 8 * 8 * self.num_channels * 4)
+        s = s.view(-1, output_width * output_width * self.num_channels * 4)  # batch_size x 8*8*num_channels*4
+        o = o.view(-1, output_width * output_width * self.num_channels * 4)
         t = np.concatenate((s, o), axis=1)
         # apply 2 fully connected layers with dropout
         t = F.dropout(F.relu(self.fcbn1(self.fc1(t))),

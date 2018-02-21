@@ -6,6 +6,8 @@ import torchvision.transforms as transforms
 from torch import Tensor
 import numpy as np
 
+import utils
+
 # borrowed from http://pytorch.org/tutorials/advanced/neural_style_tutorial.html
 # and http://pytorch.org/tutorials/beginner/data_loading_tutorial.html
 # define a training image loader that specifies transforms on images. See documentation for more details.
@@ -57,13 +59,17 @@ class SIMDataset(Dataset):
         obj_rgb = np.load(batch_prefix + "_X_obj_rgb.npy")
         obj_depth = np.expand_dims(np.load(batch_prefix + "_X_obj_d.npy"), axis=-1)
 
-        print scene_rgb.shape
-        print scene_depth.shape
-        print obj_rgb.shape
-        print obj_depth.shape
+        print(scene_rgb.shape)
+        print(scene_depth.shape)
+        print(obj_rgb.shape)
+        print(obj_depth.shape)
         X = Tensor(np.concatenate([scene_rgb, scene_depth, obj_rgb, obj_depth], axis=-1))
+        X = np.swapaxes(X, 1, 3)
+        X = X[:50, :, :, :]
 
         y = Tensor(np.load(batch_prefix + "_y.npy"))
+        y = y[:50, :]
+        print(X.shape, y.shape)
 
         return X, y
 
@@ -93,3 +99,13 @@ def fetch_dataloader(types, data_dir, params):
             dataloaders[split] = dl
 
     return dataloaders
+
+
+if __name__ == '__main__':
+    json_path = os.path.join('params.json')
+    assert os.path.isfile(json_path), "No json configuration file found at {}".format(json_path)
+    params = utils.Params(json_path)
+    params.cuda = True
+    loader = fetch_dataloader(['train'], 'datasets/parsed_data', params)['train']
+    for (i, batch) in enumerate(loader):
+        print(i)

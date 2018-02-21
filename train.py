@@ -1,5 +1,4 @@
 """Train the model"""
-
 import argparse
 import logging
 import os
@@ -46,6 +45,8 @@ def train(model, optimizer, loss_fn, dataloader, metrics, params):
     # Use tqdm for progress bar
     with tqdm(total=len(dataloader)) as t:
         for i, (train_batch, labels_batch) in enumerate(dataloader):
+            train_batch = torch.squeeze(train_batch)
+            labels_batch = torch.squeeze(labels_batch)
             # move to GPU if available
             if params.cuda:
                 train_batch, labels_batch = train_batch.cuda(async=True), labels_batch.cuda(async=True)
@@ -80,6 +81,9 @@ def train(model, optimizer, loss_fn, dataloader, metrics, params):
 
             t.set_postfix(loss='{:05.3f}'.format(loss_avg()))
             t.update()
+
+            train_batch = None
+            labels_batch = None
 
     # compute mean of all metrics in summary
     metrics_mean = {metric:np.mean([x[metric] for x in summ]) for metric in summ[0]}
@@ -154,10 +158,13 @@ if __name__ == '__main__':
 
     # use GPU if available
     params.cuda = torch.cuda.is_available()
+    params.cuda = False
 
     # Set the random seed for reproducible experiments
     torch.manual_seed(230)
-    if params.cuda: torch.cuda.manual_seed(230)
+    if params.cuda:
+        print('Using CUDA.')
+        torch.cuda.manual_seed(230)
 
     # Set the logger
     utils.set_logger(os.path.join(args.model_dir, 'train.log'))
