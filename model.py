@@ -69,8 +69,8 @@ class Net(nn.Module):
         Note: the dimensions after each step are provided
         """
         # Split input into scene and object
-        s = data[:, :4, :]
-        o = data[:, 4:, :]
+        s = data[:, :, :, :4]
+        o = data[:, :, :, 4:]
         #                                                  -> batch_size x 3 x 64 x 64
         # we apply the convolution layers, followed by batch normalisation, maxpool and relu x 3
         s = self.bn1(self.conv1(s))  # batch_size x num_channels x 64 x 64
