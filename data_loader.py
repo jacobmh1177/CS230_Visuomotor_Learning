@@ -35,7 +35,11 @@ class SIMDataset(Dataset):
             transform: (torchvision.transforms) transformation to apply on image
         """
         self.filenames = os.listdir(data_dir)
-        self.batch_prefixes = [os.path.join(data_dir, f)[:-6] for f in self.filenames if f.endswith('_y.npy')]
+        self.batch_prefixes = [os.path.join(data_dir, f)[:-6] for f in self.filenames if f.endswith('_y.npz')]
+        if "train" in data_dir:
+            self.batch_prefixes = self.batch_prefixes[:2]
+        if "val" in data_dir:
+            self.batch_prefixes = self.batch_prefixes[:1]
         self.transform = transform
 
     def __len__(self):
@@ -54,22 +58,21 @@ class SIMDataset(Dataset):
             label: (int) corresponding label of image
         """
         batch_prefix = self.batch_prefixes[idx]
-        scene_rgb = np.load(batch_prefix + "_X_scene_rgb.npy")
-        scene_depth = np.expand_dims(np.load(batch_prefix + "_X_scene_d.npy"), axis=-1)
-        obj_rgb = np.load(batch_prefix + "_X_obj_rgb.npy")
-        obj_depth = np.expand_dims(np.load(batch_prefix + "_X_obj_d.npy"), axis=-1)
+        scene_rgb = np.load(batch_prefix + "_X_scene_rgb.npz")['arr_0']
+        scene_depth = np.expand_dims(np.load(batch_prefix + "_X_scene_d.npz")['arr_0'], axis=-1)
+        obj_rgb = np.load(batch_prefix + "_X_obj_rgb.npz")['arr_0']
+        obj_depth = np.expand_dims(np.load(batch_prefix + "_X_obj_d.npz")['arr_0'], axis=-1)
 
-        print(scene_rgb.shape)
-        print(scene_depth.shape)
-        print(obj_rgb.shape)
-        print(obj_depth.shape)
+        # print(scene_rgb.shape)
+        # print(scene_depth.shape)
+        # print(obj_rgb.shape)
+        # print(obj_depth.shape)
         X = Tensor(np.concatenate([scene_rgb, scene_depth, obj_rgb, obj_depth], axis=-1))
-        X = np.swapaxes(X, 1, 3)
-        X = X[:50, :, :, :]
+        #X = np.swapaxes(X, 1, 3)
+        X = np.transpose(X, (0, 3, 1, 2))
 
-        y = Tensor(np.load(batch_prefix + "_y.npy"))
-        y = y[:50, :]
-        print(X.shape, y.shape)
+        y = Tensor(np.load(batch_prefix + "_y.npz")['arr_0'])
+        # print(X.shape, y.shape)
 
         return X, y
 

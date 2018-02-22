@@ -54,12 +54,16 @@ def train(model, optimizer, loss_fn, dataloader, metrics, params):
             train_batch, labels_batch = Variable(train_batch), Variable(labels_batch)
 
             # compute model output and loss
+            #print("Forward propagating")
             output_batch = model(train_batch)
             loss = loss_fn(output_batch, labels_batch)
+            #print("Done forward propagating")
 
             # clear previous gradients, compute gradients of all variables wrt loss
+            #print("Backward propagating")
             optimizer.zero_grad()
             loss.backward()
+            #print("Done backward propagating")
 
             # performs updates using calculated gradients
             optimizer.step()
@@ -124,7 +128,7 @@ def train_and_evaluate(model, train_dataloader, val_dataloader, optimizer, loss_
         # Evaluate for one epoch on validation set
         val_metrics = evaluate(model, loss_fn, val_dataloader, metrics, params)
 
-        val_acc = val_metrics['accuracy']
+        val_acc = val_metrics['position error']
         is_best = val_acc>=best_val_acc
 
         # Save weights
