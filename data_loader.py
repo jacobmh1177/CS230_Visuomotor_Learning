@@ -46,6 +46,12 @@ class SIMDataset(Dataset):
         # return size of dataset
         return len(self.batch_prefixes)
 
+    def crop(self, img, cropx, cropy):
+        _, y, x, c = img.shape
+        startx = x // 2 - cropx // 2
+        starty = y // 2 - cropy // 2
+        return img[:, starty:starty + cropy, startx:startx + cropx, :]
+
     def __getitem__(self, idx):
         """
         Fetch index idx image and labels from dataset. Perform transforms on image.
@@ -58,10 +64,10 @@ class SIMDataset(Dataset):
             label: (int) corresponding label of image
         """
         batch_prefix = self.batch_prefixes[idx]
-        scene_rgb = np.load(batch_prefix + "_X_scene_rgb.npz")['arr_0']
-        scene_depth = np.expand_dims(np.load(batch_prefix + "_X_scene_d.npz")['arr_0'], axis=-1)
-        obj_rgb = np.load(batch_prefix + "_X_obj_rgb.npz")['arr_0']
-        obj_depth = np.expand_dims(np.load(batch_prefix + "_X_obj_d.npz")['arr_0'], axis=-1)
+        scene_rgb = self.crop(np.load(batch_prefix + "_X_scene_rgb.npz")['arr_0'], 224, 224)
+        scene_depth = self.crop(np.load(batch_prefix + "_X_scene_d.npz")['arr_0'], 224, 224)
+        obj_rgb = self.crop(np.load(batch_prefix + "_X_obj_rgb.npz")['arr_0'], 224, 224)
+        obj_depth = self.crop(np.load(batch_prefix + "_X_obj_d.npz")['arr_0'], 224, 224)
 
         # print(scene_rgb.shape)
         # print(scene_depth.shape)
@@ -74,8 +80,8 @@ class SIMDataset(Dataset):
         y = Tensor(np.load(batch_prefix + "_y.npz")['arr_0'])
         # print(X.shape, y.shape)
 
+        #return (Tensor(scene_rgb), Tensor(scene_depth), Tensor(obj_rgb), Tensor(obj_depth)), y
         return X, y
-
 
 def fetch_dataloader(types, data_dir, params):
     """

@@ -4,6 +4,8 @@ import os
 import shutil
 
 import torch
+import torch.nn as nn
+from torch import Tensor
 
 
 class Params():
@@ -142,3 +144,10 @@ def load_checkpoint(checkpoint, model, optimizer=None):
         optimizer.load_state_dict(checkpoint['optim_dict'])
 
     return checkpoint
+
+def apply_pre_trained_model(data, model, output_dim=1000):
+    num_ftrs = model.fc.in_features
+    model.fc = nn.Linear(num_ftrs, output_dim)
+    scene_rgb, scene_d, obj_rgb, obj_d = model(data[:, :3, :, :]).data, model(data[:, 3:6, :, :]).data, model(data[:, 6:9, :, :]).data, model(data[:, 9:, :, :]).data
+    total = torch.cat((scene_rgb, scene_d, obj_rgb, obj_d), -1)
+    return total

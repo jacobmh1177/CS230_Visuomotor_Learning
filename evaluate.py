@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 import utils
-import model as net
+import model_old as net
 import data_loader
 
 parser = argparse.ArgumentParser()
@@ -18,7 +18,7 @@ parser.add_argument('--restore_file', default='best', help="name of the file in 
                      containing weights to load")
 
 
-def evaluate(model, loss_fn, dataloader, metrics, params):
+def evaluate(model, pre_trained_model, loss_fn, dataloader, metrics, params):
     """Evaluate the model on `num_steps` batches.
 
     Args:
@@ -44,6 +44,9 @@ def evaluate(model, loss_fn, dataloader, metrics, params):
             data_batch, labels_batch = data_batch.cuda(async=True), labels_batch.cuda(async=True)
         # fetch the next evaluation batch
         data_batch, labels_batch = Variable(data_batch), Variable(labels_batch)
+        data_batch = torch.squeeze(data_batch)
+        labels_batch = torch.squeeze(labels_batch)
+        data_batch = Variable(utils.apply_pre_trained_model(data_batch, pre_trained_model))
 
         # compute model output
         output_batch = model(data_batch)

@@ -7,6 +7,8 @@ import numpy as np
 import torch
 import torch.optim as optim
 from torch.autograd import Variable
+from torchvision import models
+import torch.nn as nn
 from tqdm import tqdm
 
 import utils
@@ -22,7 +24,7 @@ parser.add_argument('--restore_file', default=None,
                     training")  # 'best' or 'train'
 
 
-def train(model, optimizer, loss_fn, dataloader, metrics, params):
+def train(model, pre_trained_model, optimizer, loss_fn, dataloader, metrics, params):
     """Train the model on `num_steps` batches
 
     Args:
@@ -52,7 +54,7 @@ def train(model, optimizer, loss_fn, dataloader, metrics, params):
                 train_batch, labels_batch = train_batch.cuda(async=True), labels_batch.cuda(async=True)
             # convert to torch Variables
             train_batch, labels_batch = Variable(train_batch), Variable(labels_batch)
-
+            train_batch = Variable(utils.apply_pre_trained_model(train_batch, pre_trained_model), requires_grad=True)
             # compute model output and loss
             #print("Forward propagating")
             output_batch = model(train_batch)
@@ -95,7 +97,7 @@ def train(model, optimizer, loss_fn, dataloader, metrics, params):
     logging.info("- Train metrics: " + metrics_string)
 
 
-def train_and_evaluate(model, train_dataloader, val_dataloader, optimizer, loss_fn, metrics, params, model_dir,
+def train_and_evaluate(model, pre_trained_model, train_dataloader, val_dataloader, optimizer, loss_fn, metrics, params, model_dir,
                        restore_file=None):
     """Train the model and evaluate every epoch.
 
@@ -123,10 +125,10 @@ def train_and_evaluate(model, train_dataloader, val_dataloader, optimizer, loss_
         logging.info("Epoch {}/{}".format(epoch + 1, params.num_epochs))
 
         # compute number of batches in one epoch (one full pass over the training set)
-        train(model, optimizer, loss_fn, train_dataloader, metrics, params)
+        train(model, pre_trained_model, optimizer, loss_fn, train_dataloader, metrics, params)
 
         # Evaluate for one epoch on validation set
-        val_metrics = evaluate(model, loss_fn, val_dataloader, metrics, params)
+        val_metrics = evaluate(model, pre_trained_model, loss_fn, val_dataloader, metrics, params)
 
         val_acc = val_metrics['position error']
         is_best = val_acc>=best_val_acc
@@ -193,5 +195,8 @@ if __name__ == '__main__':
 
     # Train the model
     logging.info("Starting training for {} epoch(s)".format(params.num_epochs))
-    train_and_evaluate(model, train_dl, val_dl, optimizer, loss_fn, metrics, params, args.model_dir,
+    pre_trained_model = models.resnet18(pretrained=True)
+    for param in model.parameters():
+        param.requires_grad = False
+    train_and_evaluate(model, pre_trained_model, train_dl, val_dl, optimizer, loss_fn, metrics, params, args.model_dir,
                        args.restore_file)
