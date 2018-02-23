@@ -17,4 +17,4 @@ def plot_results(params, data):
 if __name__ == "__main__":
     params = utils.Params("./params.json")
     results = pd.read_csv(params.viz_file)
-    plot_results(results)
+    plot_results(params, results)
