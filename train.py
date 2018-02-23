@@ -24,7 +24,7 @@ parser.add_argument('--restore_file', default=None,
                     training")  # 'best' or 'train'
 
 
-def train(model, pre_trained_model, optimizer, loss_fn, dataloader, metrics, params):
+def train(model, pre_trained_model, optimizer, loss_fn, dataloader, metrics, params, epoch):
     """Train the model on `num_steps` batches
 
     Args:
@@ -94,6 +94,14 @@ def train(model, pre_trained_model, optimizer, loss_fn, dataloader, metrics, par
     # compute mean of all metrics in summary
     metrics_mean = {metric:np.mean([x[metric] for x in summ]) for metric in summ[0]}
     metrics_string = " ; ".join("{}: {:05.3f}".format(k, v) for k, v in metrics_mean.items())
+    csv_string = ",".join("{:05.3f}".format(v) for v in metrics_mean.values())
+    if epoch == 0:
+        with open(params.viz_file, 'w') as f:
+            f.write(",".join("{}".format(k) for k in metrics_mean.keys()))
+            f.write("\n")
+    with open(params.viz_file, 'a') as f:
+        f.write(csv_string)
+        f.write("\n")
     logging.info("- Train metrics: " + metrics_string)
 
 
@@ -125,7 +133,7 @@ def train_and_evaluate(model, pre_trained_model, train_dataloader, val_dataloade
         logging.info("Epoch {}/{}".format(epoch + 1, params.num_epochs))
 
         # compute number of batches in one epoch (one full pass over the training set)
-        train(model, pre_trained_model, optimizer, loss_fn, train_dataloader, metrics, params)
+        train(model, pre_trained_model, optimizer, loss_fn, train_dataloader, metrics, params, epoch)
 
         # Evaluate for one epoch on validation set
         val_metrics = evaluate(model, pre_trained_model, loss_fn, val_dataloader, metrics, params)
@@ -196,7 +204,9 @@ if __name__ == '__main__':
     # Train the model
     logging.info("Starting training for {} epoch(s)".format(params.num_epochs))
     pre_trained_model = models.resnet18(pretrained=True)
-    for param in model.parameters():
+    if torch.cuda.is_available():
+        pre_trained_model = torch.nn.DataParallel(pre_trained_model).cuda()
+    for param in pre_trained_model.parameters():
         param.requires_grad = False
     train_and_evaluate(model, pre_trained_model, train_dl, val_dl, optimizer, loss_fn, metrics, params, args.model_dir,
                        args.restore_file)

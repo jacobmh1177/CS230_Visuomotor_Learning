@@ -1,10 +1,10 @@
 {
     "learning_rate": 1e-3,
     "batch_size": 32,
-    "num_epochs": 10,
+    "num_epochs": 15,
     "dropout_rate":0.8,
     "num_channels": 32,
-    "save_summary_steps": 2,
+    "save_summary_steps": 100,
     "num_workers": 2,
     "pre_learned_output_dim": 1000,
     "viz_file": "results.csv",

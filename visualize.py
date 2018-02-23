@@ -12,7 +12,7 @@ def plot_results(params, data):
     plt.xlabel("# Epoch")
     plt.ylabel("RMSE")
     plt.legend()
-    plt.imsave(params.viz_output_file)
+    plt.savefig(params.viz_output_file)
 
 if __name__ == "__main__":
     params = utils.Params("./params.json")
