@@ -8,7 +8,7 @@ import numpy as np
 import torch
 from torch.autograd import Variable
 import utils
-import model_old as net
+import model as net
 import data_loader
 
 parser = argparse.ArgumentParser()

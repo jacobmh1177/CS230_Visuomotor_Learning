@@ -11,7 +11,7 @@ DATASETS_ROOT = 'datasets'
 OBJ_DATABASE_NAME = 'objects'
 DATASET_NAME = 'TeleOpVRSession_2018-02-05_15-44-11/'
 MINI_BATCH_SIZE = 10
-THRESHOLD = 500
+THRESHOLD = 200
 
 
 class struct():
@@ -45,13 +45,13 @@ def parse_data_mini_batch(data, batch_index=None, save=True):
 			scene_depth_name = scene_rgb_name[:-4] + '-Depth.jpg'
 
 
-			# read in rgb and depth images and add a new axis to them to indicate which snapshot index for each image
+			# read in rgb image as rgb and depth image also as rgb
 			scene_rgb_img = np.expand_dims(
 				cv2.imread(os.path.join(DATASETS_ROOT, scene_rgb_name), 1),
 				axis=0
 			)
 			scene_depth_img = np.expand_dims(
-				cv2.imread(os.path.join(DATASETS_ROOT, scene_depth_name), 0),
+				cv2.imread(os.path.join(DATASETS_ROOT, scene_depth_name), 1),
 				axis=0
 			)
 
@@ -66,7 +66,7 @@ def parse_data_mini_batch(data, batch_index=None, save=True):
 					axis=0
 				)
 				obj_depth_img = np.expand_dims(
-					cv2.imread(obj_depth_name, 0),
+					cv2.imread(obj_depth_name, 1),
 					axis=0
 				)
 				# input data (X)
@@ -88,10 +88,10 @@ def parse_data_mini_batch(data, batch_index=None, save=True):
 
 				if parsed_counter == MINI_BATCH_SIZE:
 					X_scene_rgb = np.array(X_scene_rgb).reshape((-1, 299, 299, 3))
-					X_scene_d = np.array(X_scene_d).reshape((-1, 299, 299))
+					X_scene_d = np.array(X_scene_d).reshape((-1, 299, 299, 3))
 					# print np.array(X_obj_rgb).shape
 					X_obj_rgb = np.array(X_obj_rgb).reshape((-1, 299, 299, 3))
-					X_obj_d = np.array(X_obj_d).reshape((-1, 299, 299))
+					X_obj_d = np.array(X_obj_d).reshape((-1, 299, 299, 3))
 					y = np.array(labels)
 					meta = np.array(meta_data)
 
