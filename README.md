@@ -8,5 +8,8 @@ parse_data.py will have to be modified to save the data in mini-batches because 
 
 Download the `TeleOpVRSession_2018-02-05_15-44-11.zip` file from our Google Drive into the `datasets` directory. Unzip it, so that there should now be a `datasets/TeleOpVRSession_2018-02-05_15-44-11/` directory with a `_SessionStateData.proto` and a bunch of jpg images inside.
 
-To run the parser script, run `python parser/parse_data.py` from the root directory of this repo.
+To run the parser script, run `python parser/parse_data.py` from the root directory of this repo. 
 
+## Model Train and Evaluate
+
+After you run the parser, (for now) manually split your data into **train**, **val**, and **test** folders. To train and evaluate the model, run: `python train.py --data_dir /datasets/parsed_data --model_dir .` in the root directory of this repo.
