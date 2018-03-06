@@ -54,7 +54,7 @@ def train(model, pre_trained_model, optimizer, loss_fn, dataloader, metrics, par
                 train_batch, labels_batch = train_batch.cuda(async=True), labels_batch.cuda(async=True)
             # convert to torch Variables
             train_batch, labels_batch = Variable(train_batch), Variable(labels_batch)
-            train_batch = Variable(utils.apply_pre_trained_model(train_batch, pre_trained_model), requires_grad=True)
+            #train_batch = Variable(utils.apply_pre_trained_model(train_batch, pre_trained_model), requires_grad=True)
             # compute model output and loss
             #print("Forward propagating")
             output_batch = model(train_batch)
@@ -195,7 +195,7 @@ if __name__ == '__main__':
 
     # Define the model and optimizer
     model = net.Net(params).cuda() if params.cuda else net.Net(params)
-    optimizer = optim.Adam(model.parameters(), lr=params.learning_rate)
+    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=params.learning_rate)
 
     # fetch loss function and metrics
     loss_fn = net.loss_fn

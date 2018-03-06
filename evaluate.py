@@ -46,7 +46,7 @@ def evaluate(model, pre_trained_model, loss_fn, dataloader, metrics, params):
         data_batch, labels_batch = Variable(data_batch), Variable(labels_batch)
         data_batch = torch.squeeze(data_batch)
         labels_batch = torch.squeeze(labels_batch)
-        data_batch = Variable(utils.apply_pre_trained_model(data_batch, pre_trained_model))
+        #data_batch = Variable(utils.apply_pre_trained_model(data_batch, pre_trained_model))
 
         # compute model output
         output_batch = model(data_batch)

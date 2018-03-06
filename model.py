@@ -5,6 +5,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torchvision import models
+from torch.autograd import Variable
+
 
 
 def compute_convolved_image_width(input_width, filter_width, stride, padding):
@@ -48,14 +50,14 @@ class Net(nn.Module):
         self.fc3 = nn.Linear(100, 6)
         self.dropout_rate = params.dropout_rate
 
-        # self.pre_trained_model = models.inception_v3(pretrained=True)
-        # for param in self.pre_trained_model.parameters():
-        #     param.requires_grad = False
-        # num_ftrs = self.pre_trained_model.fc.in_features
-        # self.pre_trained_model.fc = nn.Linear(num_ftrs, self.pre_learned_output_dim)
+        self.pre_trained_model = models.resnet18(pretrained=True)#models.inception_v3(pretrained=True)
+        for param in self.pre_trained_model.parameters():
+            param.requires_grad = False
+        num_ftrs = self.pre_trained_model.fc.in_features
+        self.pre_trained_model.fc = nn.Linear(num_ftrs, self.pre_learned_output_dim)
 
     def apply_transfer_learning(self, s):
-        return self.pre_trained_model(s)
+        return self.pre_trained_model(s).data
 
 
     def forward(self, s):
@@ -72,13 +74,14 @@ class Net(nn.Module):
         """
 
         # Create ResNet encodings for each input
-        # scene_rgb = self.apply_transfer_learning(scene_rgb)
-        # scene_d = self.apply_transfer_learning(scene_d)
-        # obj_rgb = self.apply_transfer_learning(obj_rgb)
-        # obj_d = self.apply_transfer_learning(obj_d)
+        scene_rgb_encoding = self.apply_transfer_learning(s[:, :3, :, :])
+        scene_d_encoding = self.apply_transfer_learning(s[:, 3:6, :, :])
+        obj_rgb_encoding = self.apply_transfer_learning(s[:, 6:9, :, :])
+        obj_d_encoding = self.apply_transfer_learning(s[:, 9:, :, :])
 
         # Concatenate encodings
         #s = s.view(-1, 4 * self.pre_learned_output_dim)
+        s = Variable(torch.cat((scene_rgb_encoding, scene_d_encoding, obj_rgb_encoding, obj_d_encoding), -1))
         # apply 2 fully connected layers with dropout
         s = F.dropout(F.relu(self.fcbn2(self.fc2(F.relu(self.fcbn1(self.fc1(s)))))),
                       p=self.dropout_rate, training=self.training)
@@ -104,8 +107,15 @@ def loss_fn(outputs, labels):
     """
     # num_examples = outputs.size()[0]
     # return -torch.sum(outputs[range(num_examples), labels]) / num_examples
-    return torch.sqrt(torch.mean((outputs - labels).pow(2)))
-
+    #return torch.sqrt(torch.mean((outputs - labels).pow(2)))
+    zero = torch.Tensor([0])
+    zero = Variable(zero)
+    pos_threshold = 5
+    pose_threshold = 15
+    pos_loss = torch.mean(torch.abs(outputs[:3] - labels[:3])) - pos_threshold
+    pose_loss = torch.mean(torch.abs(outputs[3:] - labels[3:])) - pose_threshold
+    total_loss = pos_loss + pose_loss
+    return torch.max(zero, total_loss)
 
 def accuracy(outputs, labels):
     """
