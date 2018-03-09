@@ -37,7 +37,7 @@ class SIMDataset(Dataset):
         self.filenames = os.listdir(data_dir)
         self.batch_prefixes = [os.path.join(data_dir, f)[:-6] for f in self.filenames if f.endswith('_y.npz')]
         if "train" in data_dir:
-            self.batch_prefixes = self.batch_prefixes[:2]
+            self.batch_prefixes = self.batch_prefixes[:1]
         if "val" in data_dir:
             self.batch_prefixes = self.batch_prefixes[:1]
         self.transform = transform

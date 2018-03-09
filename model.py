@@ -41,6 +41,7 @@ class Net(nn.Module):
         super(Net, self).__init__()
         self.num_channels = params.num_channels
         self.pre_learned_output_dim = params.pre_learned_output_dim
+        self.model_architecture = params.model_architecture
 
         # 2 fully connected layers to transform the output of the convolution layers to the final output
         self.fc1 = nn.Linear(4 * self.pre_learned_output_dim, 1000)
@@ -56,9 +57,68 @@ class Net(nn.Module):
         num_ftrs = self.pre_trained_model.fc.in_features
         self.pre_trained_model.fc = nn.Linear(num_ftrs, self.pre_learned_output_dim)
 
+    def forward_a(self, scene_encoding, obj_encoding):
+        self.fc_1_scene = nn.Linear(2 * self.pre_learned_output_dim, 500)
+        self.fcbn_1_scene = nn.BatchNorm1d(500)
+        self.fc_1_obj = nn.Linear(2 * self.pre_learned_output_dim, 500)
+        self.fcbn_1_obj = nn.BatchNorm1d(500)
+        self.fc_2 = nn.Linear(1000, 128)
+        self.fcbn_2 = nn.BatchNorm1d(128)
+        self.fc_3= nn.Linear(128, 6)
+        layer_1_scene = F.dropout(F.relu(self.fcbn_1_scene(self.fc_1_scene(scene_encoding))), p=self.dropout_rate, training=self.training)
+        layer_1_obj = F.dropout(F.relu(self.fcbn_1_obj(self.fc_1_obj(obj_encoding))), p=self.dropout_rate, training=self.training)
+        layer_2_input = torch.cat((layer_1_scene, layer_1_obj), -1)
+        out = F.dropout(F.relu(F.relu(self.fcbn_2(self.fc_2(layer_2_input)))), p=self.dropout_rate, training=self.training)
+        return self.fc_3(out)
+
+    def forward_b(self, scene_encoding, obj_encoding):
+        self.fc_1 = nn.Linear(4 * self.pre_learned_output_dim, 1000)
+        self.fcbn_1 = nn.BatchNorm1d(1000)
+        self.fc_2 = nn.Linear(1000, 500)
+        self.fcbn_2 = nn.BatchNorm1d(500)
+        self.fc_3 = nn.Linear(500, 128)
+        self.fcbn_3 = nn.BatchNorm1d(128)
+        self.fc_4 = nn.Linear(128, 6)
+        stacked_input = torch.cat((scene_encoding, obj_encoding), -1)
+        out = F.dropout(F.relu(self.fcbn_3(self.fc_3(F.relu(self.fcbn_2(self.fc_2(F.relu(self.fcbn_1(self.fc_1(stacked_input))))))))), p=self.dropout_rate, training=self.training)
+        out = self.fc_4(out)
+        return out
+
+    def forward_c(self, scene_encoding, obj_encoding):
+        self.fc_1_scene = nn.Linear(2 * self.pre_learned_output_dim, 500)
+        self.fcbn_1_scene = nn.BatchNorm1d(500)
+        self.fc_1_obj = nn.Linear(2 * self.pre_learned_output_dim, 500)
+        self.fcbn_1_obj = nn.BatchNorm1d(500)
+        self.fc_2_scene = nn.Linear(500, 500)
+        self.fcbn_2_scene = nn.BatchNorm1d(500)
+        self.fc_3 = nn.Linear(1000, 128)
+        self.fcbn_3 = nn.BatchNorm1d(128)
+        self.fc_4 = nn.Linear(128, 6)
+        layer_1_scene = F.dropout(F.relu(self.fcbn_1_scene(self.fc_1_scene(scene_encoding))), p=self.dropout_rate, training=self.training)
+        layer_1_obj = F.dropout(F.relu(self.fcbn_1_obj(self.fc_1_obj(obj_encoding))), p=self.dropout_rate, training=self.training)
+        layer_2_scene = F.dropout(F.relu(self.fcbn_2_scene(self.fc_2_scene(layer_1_scene))), p=self.dropout_rate, training=self.training)
+        layer_3_input = torch.cat((layer_2_scene, layer_1_obj), -1)
+        out = F.dropout(F.relu(self.fcbn_3(self.fc_3(layer_3_input))), p=self.dropout_rate, training=self.training)
+        return self.fc_4(out)
+
+    def forward_d(self, scene_encoding, obj_encoding):
+        self.fc_1_scene = nn.Linear(2 * self.pre_learned_output_dim, 500)
+        self.fcbn_1_scene = nn.BatchNorm1d(500)
+        self.fc_1_obj = nn.Linear(2 * self.pre_learned_output_dim, 500)
+        self.fcbn_1_obj = nn.BatchNorm1d(500)
+        self.fc_2 = nn.Linear(1000, 500)
+        self.fcbn_2 = nn.BatchNorm1d(500)
+        self.fc_3 = nn.Linear(500, 128)
+        self.fcbn_3 = nn.BatchNorm1d(128)
+        self.fc_4 = nn.Linear(128, 6)
+        layer_1_scene = F.dropout(F.relu(self.fcbn_1_scene(self.fc_1_scene(scene_encoding))), p=self.dropout_rate, training=self.training)
+        layer_1_obj = F.dropout(F.relu(self.fcbn_1_obj(self.fc_1_obj(obj_encoding))), p=self.dropout_rate, training=self.training)
+        layer_2_input = torch.cat((layer_1_scene, layer_1_obj), -1)
+        out = F.dropout(F.relu(self.fcbn_3(self.fc_3(F.relu(self.fcbn_2(self.fc_2(layer_2_input)))))), p=self.dropout_rate, training=self.training)
+        return self.fc_4(out)
+
     def apply_transfer_learning(self, s):
         return self.pre_trained_model(s).data
-
 
     def forward(self, s):
         """
@@ -73,22 +133,57 @@ class Net(nn.Module):
         Note: the dimensions after each step are provided
         """
 
-        # Create ResNet encodings for each input
+        # # Create ResNet encodings for each input
+        # scene_rgb_encoding = self.apply_transfer_learning(s[:, :3, :, :])
+        # scene_d_encoding = self.apply_transfer_learning(s[:, 3:6, :, :])
+        # obj_rgb_encoding = self.apply_transfer_learning(s[:, 6:9, :, :])
+        # obj_d_encoding = self.apply_transfer_learning(s[:, 9:, :, :])
+        #
+        # # Concatenate encodings
+        # #s = s.view(-1, 4 * self.pre_learned_output_dim)
+        # s = Variable(torch.cat((scene_rgb_encoding, scene_d_encoding, obj_rgb_encoding, obj_d_encoding), -1))
+        # # apply 2 fully connected layers with dropout
+        # s = F.dropout(F.relu(self.fcbn2(self.fc2(F.relu(self.fcbn1(self.fc1(s)))))),
+        #               p=self.dropout_rate, training=self.training)
+        # # s = F.dropout(F.relu(self.fcbn1(self.fc1(s))),
+        # #               p=self.dropout_rate, training=self.training)
+        # s = self.fc3(s)
+        # return s
         scene_rgb_encoding = self.apply_transfer_learning(s[:, :3, :, :])
         scene_d_encoding = self.apply_transfer_learning(s[:, 3:6, :, :])
         obj_rgb_encoding = self.apply_transfer_learning(s[:, 6:9, :, :])
         obj_d_encoding = self.apply_transfer_learning(s[:, 9:, :, :])
 
         # Concatenate encodings
-        #s = s.view(-1, 4 * self.pre_learned_output_dim)
-        s = Variable(torch.cat((scene_rgb_encoding, scene_d_encoding, obj_rgb_encoding, obj_d_encoding), -1))
-        # apply 2 fully connected layers with dropout
-        s = F.dropout(F.relu(self.fcbn2(self.fc2(F.relu(self.fcbn1(self.fc1(s)))))),
-                      p=self.dropout_rate, training=self.training)
-        # s = F.dropout(F.relu(self.fcbn1(self.fc1(s))),
-        #               p=self.dropout_rate, training=self.training)
-        s = self.fc3(s)
-        return s
+        scene_encoding = Variable(torch.cat((scene_rgb_encoding, scene_d_encoding), -1))
+        obj_encoding = Variable(torch.cat((obj_rgb_encoding, obj_d_encoding), -1))
+        model_architecture = self.model_architecture.upper()
+        if model_architecture == 'A':
+            return self.forward_a(scene_encoding, obj_encoding)
+        elif model_architecture == 'B':
+            return self.forward_b(scene_encoding, obj_encoding)
+        elif model_architecture == 'C':
+            return self.forward_c(scene_encoding, obj_encoding)
+        elif model_architecture == 'D':
+            return self.forward_d(scene_encoding, obj_encoding)
+        else:
+            # Create ResNet encodings for each input
+            scene_rgb_encoding = self.apply_transfer_learning(s[:, :3, :, :])
+            scene_d_encoding = self.apply_transfer_learning(s[:, 3:6, :, :])
+            obj_rgb_encoding = self.apply_transfer_learning(s[:, 6:9, :, :])
+            obj_d_encoding = self.apply_transfer_learning(s[:, 9:, :, :])
+
+            # Concatenate encodings
+            #s = s.view(-1, 4 * self.pre_learned_output_dim)
+            s = Variable(torch.cat((scene_rgb_encoding, scene_d_encoding, obj_rgb_encoding, obj_d_encoding), -1))
+            # apply 2 fully connected layers with dropout
+            s = F.dropout(F.relu(self.fcbn2(self.fc2(F.relu(self.fcbn1(self.fc1(s)))))),
+                          p=self.dropout_rate, training=self.training)
+            # s = F.dropout(F.relu(self.fcbn1(self.fc1(s))),
+            #               p=self.dropout_rate, training=self.training)
+            s = self.fc3(s)
+            return s
+
 
 
 def loss_fn(outputs, labels):
@@ -105,17 +200,14 @@ def loss_fn(outputs, labels):
     Note: you may use a standard loss function from http://pytorch.org/docs/master/nn.html#loss-functions. This example
           demonstrates how you can easily define a custom loss function.
     """
-    # num_examples = outputs.size()[0]
-    # return -torch.sum(outputs[range(num_examples), labels]) / num_examples
-    #return torch.sqrt(torch.mean((outputs - labels).pow(2)))
-    zero = torch.Tensor([0])
-    zero = Variable(zero)
+    num_examples = outputs.size()[0]
     pos_threshold = 5
     pose_threshold = 15
-    pos_loss = torch.mean(torch.abs(outputs[:3] - labels[:3])) - pos_threshold
-    pose_loss = torch.mean(torch.abs(outputs[3:] - labels[3:])) - pose_threshold
-    total_loss = pos_loss + pose_loss
-    return torch.max(zero, total_loss)
+    pos_loss = torch.sum((torch.sum(torch.sqrt((outputs[:, :3] - labels[:, :3]).pow(2)), dim=1) - pos_threshold).type(torch.FloatTensor))
+    pose_loss = torch.sum((torch.sum(torch.sqrt((outputs[:, 3:] - labels[:, 3:]).pow(2)), dim=1) - pose_threshold).type(torch.FloatTensor))
+    total_loss = torch.sum(pos_loss + pose_loss) / num_examples
+    #print total_loss
+    return total_loss
 
 def accuracy(outputs, labels):
     """
@@ -132,19 +224,21 @@ def accuracy(outputs, labels):
 
 
 def pos_error(outputs, labels):
+    num_examples = len(labels)
     labels = np.squeeze(labels)
-    # print("Evaluation- Output shape: {}".format(outputs.shape))
-    # print("Evaluation- Labels shape: {}".format(labels.shape))
-    position_output = outputs[:3]
-    position_label = labels[:3]
-    return np.sqrt(np.mean(np.power((position_output - position_label), 2)))
+    pos_threshold = 5
+    pos_loss = np.sum(
+        (np.sum(np.sqrt(np.power((outputs[:, :3] - labels[:, :3]), 2))) - pos_threshold))
+    return pos_loss / float(num_examples)
 
 
 def pose_error(outputs, labels):
+    num_examples = len(labels)
     labels = np.squeeze(labels)
-    pose_output = outputs[3:]
-    pose_label = labels[3:]
-    return np.sqrt(np.mean(np.power((pose_output - pose_label), 2)))
+    pose_threshold = 15
+    pose_loss = np.sum(
+        (np.sum(np.sqrt(np.power((outputs[:, 3:] - labels[:, 3:]), 2))) - pose_threshold))
+    return pose_loss / float(num_examples)
 
 
 # maintain all metrics required in this dictionary- these are used in the training and evaluation loops
