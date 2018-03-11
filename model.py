@@ -57,7 +57,17 @@ class Net(nn.Module):
         num_ftrs = self.pre_trained_model.fc.in_features
         self.pre_trained_model.fc = nn.Linear(num_ftrs, self.pre_learned_output_dim)
 
-    def forward_a(self, scene_encoding, obj_encoding):
+        model_architecture = self.model_architecture.upper()
+        if model_architecture == 'A':
+            self.build_a()
+        elif model_architecture == 'B':
+            self.build_b()
+        elif model_architecture == 'C':
+            self.build_c()
+        elif model_architecture == 'D':
+            self.build_d()
+
+    def build_a(self):
         self.fc_1_scene = nn.Linear(2 * self.pre_learned_output_dim, 500)
         self.fcbn_1_scene = nn.BatchNorm1d(500)
         self.fc_1_obj = nn.Linear(2 * self.pre_learned_output_dim, 500)
@@ -65,13 +75,14 @@ class Net(nn.Module):
         self.fc_2 = nn.Linear(1000, 128)
         self.fcbn_2 = nn.BatchNorm1d(128)
         self.fc_3= nn.Linear(128, 6)
+    def forward_a(self, scene_encoding, obj_encoding):
         layer_1_scene = F.dropout(F.relu(self.fcbn_1_scene(self.fc_1_scene(scene_encoding))), p=self.dropout_rate, training=self.training)
         layer_1_obj = F.dropout(F.relu(self.fcbn_1_obj(self.fc_1_obj(obj_encoding))), p=self.dropout_rate, training=self.training)
         layer_2_input = torch.cat((layer_1_scene, layer_1_obj), -1)
         out = F.dropout(F.relu(F.relu(self.fcbn_2(self.fc_2(layer_2_input)))), p=self.dropout_rate, training=self.training)
         return self.fc_3(out)
 
-    def forward_b(self, scene_encoding, obj_encoding):
+    def build_b(self):
         self.fc_1 = nn.Linear(4 * self.pre_learned_output_dim, 1000)
         self.fcbn_1 = nn.BatchNorm1d(1000)
         self.fc_2 = nn.Linear(1000, 500)
@@ -79,12 +90,13 @@ class Net(nn.Module):
         self.fc_3 = nn.Linear(500, 128)
         self.fcbn_3 = nn.BatchNorm1d(128)
         self.fc_4 = nn.Linear(128, 6)
+    def forward_b(self, scene_encoding, obj_encoding):
         stacked_input = torch.cat((scene_encoding, obj_encoding), -1)
         out = F.dropout(F.relu(self.fcbn_3(self.fc_3(F.relu(self.fcbn_2(self.fc_2(F.relu(self.fcbn_1(self.fc_1(stacked_input))))))))), p=self.dropout_rate, training=self.training)
         out = self.fc_4(out)
         return out
 
-    def forward_c(self, scene_encoding, obj_encoding):
+    def build_c(self):
         self.fc_1_scene = nn.Linear(2 * self.pre_learned_output_dim, 500)
         self.fcbn_1_scene = nn.BatchNorm1d(500)
         self.fc_1_obj = nn.Linear(2 * self.pre_learned_output_dim, 500)
@@ -94,6 +106,7 @@ class Net(nn.Module):
         self.fc_3 = nn.Linear(1000, 128)
         self.fcbn_3 = nn.BatchNorm1d(128)
         self.fc_4 = nn.Linear(128, 6)
+    def forward_c(self, scene_encoding, obj_encoding):
         layer_1_scene = F.dropout(F.relu(self.fcbn_1_scene(self.fc_1_scene(scene_encoding))), p=self.dropout_rate, training=self.training)
         layer_1_obj = F.dropout(F.relu(self.fcbn_1_obj(self.fc_1_obj(obj_encoding))), p=self.dropout_rate, training=self.training)
         layer_2_scene = F.dropout(F.relu(self.fcbn_2_scene(self.fc_2_scene(layer_1_scene))), p=self.dropout_rate, training=self.training)
@@ -101,7 +114,7 @@ class Net(nn.Module):
         out = F.dropout(F.relu(self.fcbn_3(self.fc_3(layer_3_input))), p=self.dropout_rate, training=self.training)
         return self.fc_4(out)
 
-    def forward_d(self, scene_encoding, obj_encoding):
+    def build_d(self):
         self.fc_1_scene = nn.Linear(2 * self.pre_learned_output_dim, 500)
         self.fcbn_1_scene = nn.BatchNorm1d(500)
         self.fc_1_obj = nn.Linear(2 * self.pre_learned_output_dim, 500)
@@ -111,6 +124,7 @@ class Net(nn.Module):
         self.fc_3 = nn.Linear(500, 128)
         self.fcbn_3 = nn.BatchNorm1d(128)
         self.fc_4 = nn.Linear(128, 6)
+    def forward_d(self, scene_encoding, obj_encoding):
         layer_1_scene = F.dropout(F.relu(self.fcbn_1_scene(self.fc_1_scene(scene_encoding))), p=self.dropout_rate, training=self.training)
         layer_1_obj = F.dropout(F.relu(self.fcbn_1_obj(self.fc_1_obj(obj_encoding))), p=self.dropout_rate, training=self.training)
         layer_2_input = torch.cat((layer_1_scene, layer_1_obj), -1)
