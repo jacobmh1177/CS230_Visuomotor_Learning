@@ -133,22 +133,6 @@ class Net(nn.Module):
         Note: the dimensions after each step are provided
         """
 
-        # # Create ResNet encodings for each input
-        # scene_rgb_encoding = self.apply_transfer_learning(s[:, :3, :, :])
-        # scene_d_encoding = self.apply_transfer_learning(s[:, 3:6, :, :])
-        # obj_rgb_encoding = self.apply_transfer_learning(s[:, 6:9, :, :])
-        # obj_d_encoding = self.apply_transfer_learning(s[:, 9:, :, :])
-        #
-        # # Concatenate encodings
-        # #s = s.view(-1, 4 * self.pre_learned_output_dim)
-        # s = Variable(torch.cat((scene_rgb_encoding, scene_d_encoding, obj_rgb_encoding, obj_d_encoding), -1))
-        # # apply 2 fully connected layers with dropout
-        # s = F.dropout(F.relu(self.fcbn2(self.fc2(F.relu(self.fcbn1(self.fc1(s)))))),
-        #               p=self.dropout_rate, training=self.training)
-        # # s = F.dropout(F.relu(self.fcbn1(self.fc1(s))),
-        # #               p=self.dropout_rate, training=self.training)
-        # s = self.fc3(s)
-        # return s
         scene_rgb_encoding = self.apply_transfer_learning(s[:, :3, :, :])
         scene_d_encoding = self.apply_transfer_learning(s[:, 3:6, :, :])
         obj_rgb_encoding = self.apply_transfer_learning(s[:, 6:9, :, :])
@@ -174,13 +158,10 @@ class Net(nn.Module):
             obj_d_encoding = self.apply_transfer_learning(s[:, 9:, :, :])
 
             # Concatenate encodings
-            #s = s.view(-1, 4 * self.pre_learned_output_dim)
             s = Variable(torch.cat((scene_rgb_encoding, scene_d_encoding, obj_rgb_encoding, obj_d_encoding), -1))
             # apply 2 fully connected layers with dropout
             s = F.dropout(F.relu(self.fcbn2(self.fc2(F.relu(self.fcbn1(self.fc1(s)))))),
                           p=self.dropout_rate, training=self.training)
-            # s = F.dropout(F.relu(self.fcbn1(self.fc1(s))),
-            #               p=self.dropout_rate, training=self.training)
             s = self.fc3(s)
             return s
 
@@ -200,13 +181,13 @@ def loss_fn(outputs, labels):
     Note: you may use a standard loss function from http://pytorch.org/docs/master/nn.html#loss-functions. This example
           demonstrates how you can easily define a custom loss function.
     """
+    zero = Variable(torch.FloatTensor([0]))
     num_examples = outputs.size()[0]
     pos_threshold = 5
     pose_threshold = 15
-    pos_loss = torch.sum((torch.sum(torch.sqrt((outputs[:, :3] - labels[:, :3]).pow(2)), dim=1) - pos_threshold).type(torch.FloatTensor))
-    pose_loss = torch.sum((torch.sum(torch.sqrt((outputs[:, 3:] - labels[:, 3:]).pow(2)), dim=1) - pose_threshold).type(torch.FloatTensor))
+    pos_loss = torch.sum((torch.clamp(torch.sqrt(torch.sum((outputs[:, :3] - labels[:, :3]).pow(2), dim=1)) - pos_threshold, min=0)).type(torch.FloatTensor), dim=-1)
+    pose_loss = torch.sum((torch.clamp(torch.sqrt(torch.sum((outputs[:, 3:] - labels[:, 3:]).pow(2), dim=1)) - pose_threshold, min=0)).type(torch.FloatTensor), dim=-1)
     total_loss = torch.sum(pos_loss + pose_loss) / num_examples
-    #print total_loss
     return total_loss
 
 def accuracy(outputs, labels):
@@ -228,7 +209,7 @@ def pos_error(outputs, labels):
     labels = np.squeeze(labels)
     pos_threshold = 5
     pos_loss = np.sum(
-        (np.sum(np.sqrt(np.power((outputs[:, :3] - labels[:, :3]), 2))) - pos_threshold))
+        np.clip((np.sqrt(np.sum(np.power((outputs[:, :3] - labels[:, :3]), 2), axis=-1)) - pos_threshold), a_min=0, a_max=None), axis=-1)
     return pos_loss / float(num_examples)
 
 
@@ -237,7 +218,7 @@ def pose_error(outputs, labels):
     labels = np.squeeze(labels)
     pose_threshold = 15
     pose_loss = np.sum(
-        (np.sum(np.sqrt(np.power((outputs[:, 3:] - labels[:, 3:]), 2))) - pose_threshold))
+        np.clip((np.sqrt(np.sum(np.power((outputs[:, 3:] - labels[:, 3:]), 2), axis=-1)) - pose_threshold), a_min=0, a_max=None), axis=-1)
     return pose_loss / float(num_examples)
 
 
