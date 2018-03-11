@@ -12,6 +12,7 @@ OBJ_DATABASE_NAME = 'objects'
 DATASET_NAME = 'TeleOpVRSession_2018-02-05_15-44-11/'
 MINI_BATCH_SIZE = 10
 THRESHOLD = 200
+RANDOM_SEED = 12345
 
 
 class struct():
@@ -137,6 +138,7 @@ def parse_data_mini_batch(data, batch_index=None, save=True):
 	# 	np.save(save_path + "batch_{}_meta.npy".format(batch_index + 1), meta)
 
 if __name__ == '__main__':
+	random.seed(RANDOM_SEED)
 	data = extract_data_from_proto()
 	parse_data_mini_batch(data)
 	# num_mini_batches = len(data.states) / MINI_BATCH_SIZE
