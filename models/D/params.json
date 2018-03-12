@@ -1,0 +1,13 @@
+{
+    "learning_rate": 1e-3,
+    "batch_size": 1,
+    "num_epochs": 400,
+    "dropout_rate":0.8,
+    "num_channels": 32,
+    "save_summary_steps": 1,
+    "num_workers": 4,
+    "pre_learned_output_dim": 1000,
+    "viz_file": "results_D.csv",
+    "viz_output_file": "results_D.jpg",
+    "model_architecture": "D"
+}
