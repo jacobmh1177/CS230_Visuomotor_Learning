@@ -180,8 +180,15 @@ class Net(nn.Module):
             return s
 
 
-
 def loss_fn(outputs, labels):
+    position_loss_coefficient = 100 #placeholder
+    position_loss = torch.mean(torch.sqrt((outputs[:, :3] - labels[:, :3]).pow(2)))
+    position_loss = position_loss * position_loss_coefficient
+
+    pose_loss = torch.mean(torch.sqrt((outputs[:, 3:] - labels[:, 3:]).pow(2)))
+    return position_loss + pose_loss
+
+def old_loss_fn(outputs, labels):
     """
     Compute the cross entropy loss given outputs and labels.
 
@@ -218,27 +225,27 @@ def accuracy(outputs, labels):
     return np.sum(outputs == labels) / float(labels.size)
 
 
-def pos_error(outputs, labels):
+def position_accuracy(outputs, labels):
     num_examples = len(labels)
     labels = np.squeeze(labels)
-    pos_threshold = 5
+    pos_threshold = .05
     pos_loss = np.sum(
-        np.clip((np.sqrt(np.sum(np.power((outputs[:, :3] - labels[:, :3]), 2), axis=-1)) - pos_threshold), a_min=0, a_max=None), axis=-1)
-    return pos_loss / float(num_examples)
+        np.clip((np.sqrt(np.sum(np.power((outputs[:, :3] - labels[:, :3]), 2), axis=-1)) - pos_threshold), a_min=0, a_max=1), axis=-1)
+    return 1.0 - (pos_loss / float(num_examples))
 
 
-def pose_error(outputs, labels):
+def pose_accuracy(outputs, labels):
     num_examples = len(labels)
     labels = np.squeeze(labels)
     pose_threshold = 15
     pose_loss = np.sum(
-        np.clip((np.sqrt(np.sum(np.power((outputs[:, 3:] - labels[:, 3:]), 2), axis=-1)) - pose_threshold), a_min=0, a_max=None), axis=-1)
-    return pose_loss / float(num_examples)
+        np.clip((np.sqrt(np.sum(np.power((outputs[:, 3:] - labels[:, 3:]), 2), axis=-1)) - pose_threshold), a_min=0, a_max=1), axis=-1)
+    return 1.0 - (pose_loss / float(num_examples))
 
 
 # maintain all metrics required in this dictionary- these are used in the training and evaluation loops
 metrics = {
-    'position error': pos_error,
-    'pose error': pose_error,
+    'position accuracy': position_accuracy,
+    'pose accuracy': pose_accuracy,
     # could add more metrics such as accuracy for each token type
 }

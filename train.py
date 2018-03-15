@@ -138,7 +138,7 @@ def train_and_evaluate(model, pre_trained_model, train_dataloader, val_dataloade
         # Evaluate for one epoch on validation set
         val_metrics = evaluate(model, pre_trained_model, loss_fn, val_dataloader, metrics, params)
 
-        val_acc = val_metrics['position error']
+        val_acc = val_metrics['position accuracy']
         is_best = val_acc>=best_val_acc
 
         # Save weights
