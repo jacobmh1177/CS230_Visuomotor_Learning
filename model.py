@@ -188,13 +188,9 @@ def loss_fn(outputs, labels):
     pose_loss_1 = torch.mean(torch.sqrt((outputs[:, 3:] - labels[:, 3:]).pow(2)))
     pose_loss_2 = torch.mean(Variable(torch.FloatTensor([360])) - torch.sqrt((outputs[:, 3:] - labels[:, 3:]).pow(2)))
 
-    print "pose 1: {}".format(pose_loss_1.data[0])
-    print "pose_2: {}".format(pose_loss_2.data[0])
-
     if pose_loss_1.data[0] > pose_loss_2.data[0]:
         return position_loss + pose_loss_2
     else:
-        print "less"
         return position_loss + pose_loss_1
 
 def old_loss_fn(outputs, labels):
@@ -241,7 +237,7 @@ def position_accuracy(outputs, labels):
     # pos_loss = np.sum(
     #     (np.sqrt(np.sum(np.power((outputs[:, :3] - labels[:, :3]), 2), axis=-1)) > pos_threshold), axis=-1)
     pos_accuracy = sum([np.linalg.norm(outputs[i, :3] - labels[i, :3]) < pos_threshold for i in range(outputs.shape[0])])
-    return pos_accuracy
+    return pos_accuracy / float(num_examples)
 
 
 def pose_accuracy(outputs, labels):
@@ -253,7 +249,7 @@ def pose_accuracy(outputs, labels):
     # return 1.0 - (pose_loss / float(num_examples))
     pose_accuracy = sum(
         [np.linalg.norm(outputs[i, 3:] - labels[i, 3:]) < pose_threshold for i in range(outputs.shape[0])])
-    return pose_accuracy
+    return pose_accuracy / float(num_examples)
 
 
 # maintain all metrics required in this dictionary- these are used in the training and evaluation loops

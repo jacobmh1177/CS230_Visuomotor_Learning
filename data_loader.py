@@ -5,6 +5,7 @@ from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
 from torch import Tensor
 import numpy as np
+from transforms3d.taitbryan import axangle2euler
 
 import utils
 
@@ -36,10 +37,10 @@ class SIMDataset(Dataset):
         """
         self.filenames = os.listdir(data_dir)
         self.batch_prefixes = [os.path.join(data_dir, f)[:-6] for f in self.filenames if f.endswith('_y.npz')]
-        # if "train" in data_dir:
-        #     self.batch_prefixes = self.batch_prefixes[:1]
-        # if "val" in data_dir:
-        #     self.batch_prefixes = self.batch_prefixes[:1]
+        if "train" in data_dir:
+            self.batch_prefixes = self.batch_prefixes[:1]
+        if "val" in data_dir:
+            self.batch_prefixes = self.batch_prefixes[:1]
         self.transform = transform
 
     def __len__(self):
@@ -51,6 +52,18 @@ class SIMDataset(Dataset):
         startx = x // 2 - cropx // 2
         starty = y // 2 - cropy // 2
         return img[:, starty:starty + cropy, startx:startx + cropx, :]
+
+    def transform_pose(self, labels):
+        poses = labels[:, 3:]
+        for i, pose in enumerate(poses):
+            rotation_axis = pose / np.linalg.norm(pose)
+            angle = np.linalg.norm(pose)
+            z, y, x = axangle2euler(rotation_axis, angle)
+            labels[i, 3] = x * (180./np.pi)
+            labels[i, 4] = y * (180./np.pi)
+            labels[i, 5] = z * (180./np.pi)
+        return labels
+
 
     def __getitem__(self, idx):
         """
@@ -77,7 +90,7 @@ class SIMDataset(Dataset):
         #X = np.swapaxes(X, 1, 3)
         X = np.transpose(X, (0, 3, 1, 2))
 
-        y = Tensor(np.load(batch_prefix + "_y.npz")['arr_0'])
+        y = Tensor(self.transform_pose(np.load(batch_prefix + "_y.npz")['arr_0']))
         # print(X.shape, y.shape)
 
         #return (Tensor(scene_rgb), Tensor(scene_depth), Tensor(obj_rgb), Tensor(obj_depth)), y
