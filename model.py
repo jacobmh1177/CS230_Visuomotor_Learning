@@ -185,8 +185,17 @@ def loss_fn(outputs, labels):
     position_loss = torch.mean(torch.sqrt((outputs[:, :3] - labels[:, :3]).pow(2)))
     position_loss = position_loss * position_loss_coefficient
 
-    pose_loss = torch.mean(torch.sqrt((outputs[:, 3:] - labels[:, 3:]).pow(2)))
-    return position_loss + pose_loss
+    pose_loss_1 = torch.mean(torch.sqrt((outputs[:, 3:] - labels[:, 3:]).pow(2)))
+    pose_loss_2 = torch.mean(Variable(torch.FloatTensor([360])) - torch.sqrt((outputs[:, 3:] - labels[:, 3:]).pow(2)))
+
+    print "pose 1: {}".format(pose_loss_1.data[0])
+    print "pose_2: {}".format(pose_loss_2.data[0])
+
+    if pose_loss_1.data[0] > pose_loss_2.data[0]:
+        return position_loss + pose_loss_2
+    else:
+        print "less"
+        return position_loss + pose_loss_1
 
 def old_loss_fn(outputs, labels):
     """
