@@ -181,7 +181,7 @@ class Net(nn.Module):
 
 
 def loss_fn(outputs, labels):
-    position_loss_coefficient = 100 #placeholder
+    position_loss_coefficient = 100 # placeholder
     position_loss = torch.mean(torch.sqrt((outputs[:, :3] - labels[:, :3]).pow(2)))
     position_loss = position_loss * position_loss_coefficient
 
@@ -229,18 +229,22 @@ def position_accuracy(outputs, labels):
     num_examples = len(labels)
     labels = np.squeeze(labels)
     pos_threshold = .05
-    pos_loss = np.sum(
-        np.clip((np.sqrt(np.sum(np.power((outputs[:, :3] - labels[:, :3]), 2), axis=-1)) - pos_threshold), a_min=0, a_max=1), axis=-1)
-    return 1.0 - (pos_loss / float(num_examples))
+    # pos_loss = np.sum(
+    #     (np.sqrt(np.sum(np.power((outputs[:, :3] - labels[:, :3]), 2), axis=-1)) > pos_threshold), axis=-1)
+    pos_accuracy = sum([np.linalg.norm(outputs[i, :3] - labels[i, :3]) < pos_threshold for i in range(outputs.shape[0])])
+    return pos_accuracy
 
 
 def pose_accuracy(outputs, labels):
     num_examples = len(labels)
     labels = np.squeeze(labels)
     pose_threshold = 15
-    pose_loss = np.sum(
-        np.clip((np.sqrt(np.sum(np.power((outputs[:, 3:] - labels[:, 3:]), 2), axis=-1)) - pose_threshold), a_min=0, a_max=1), axis=-1)
-    return 1.0 - (pose_loss / float(num_examples))
+    # pose_loss = np.sum(
+    #     (np.sqrt(np.sum(np.power((outputs[:, 3:] - labels[:, 3:]), 2), axis=-1)) > pose_threshold), axis=-1)
+    # return 1.0 - (pose_loss / float(num_examples))
+    pose_accuracy = sum(
+        [np.linalg.norm(outputs[i, 3:] - labels[i, 3:]) < pose_threshold for i in range(outputs.shape[0])])
+    return pose_accuracy
 
 
 # maintain all metrics required in this dictionary- these are used in the training and evaluation loops
