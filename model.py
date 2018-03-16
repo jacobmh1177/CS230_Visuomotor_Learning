@@ -278,13 +278,17 @@ def pose_accuracy(outputs, labels):
 
 def position_loss(outputs, labels):
     #position_loss = np.mean([np.sum(pow(outputs[i, :3] - labels[i, :3], 2)) for i in range(outputs.shape[0])])
-    position_loss = sum([np.linalg.norm(outputs[i, :3] - labels[i, :3]) ** 2 for i in range(outputs.shape[0])])
+    position_loss = sum([np.sum((outputs[i, :3] - labels[i, :3]) ** 2) for i in range(outputs.shape[0])])
     return position_loss / float(outputs.shape[0])
 
 def pose_loss(outputs, labels):
     #pose_loss = np.mean([np.sum(pow(outputs[i, 3:] - labels[i, 3:], 2)) for i in range(outputs.shape[0])])
-    pose_loss = sum([np.linalg.norm(outputs[i, 3:] - labels[i, 3:]) ** 2 for i in range(outputs.shape[0])])
+    pose_loss = sum([np.sum((outputs[i, 3:] - labels[i, 3:]) ** 2) for i in range(outputs.shape[0])])
     return pose_loss / float(outputs.shape[0])
+
+def total_loss(outputs, labels):
+    total_loss = sum([np.sum((outputs[i, :] - labels[i, :]) ** 2) for i in range(outputs.shape[0])])
+    return total_loss / float(outputs.shape[0])
 
 
 # maintain all metrics required in this dictionary- these are used in the training and evaluation loops
@@ -292,6 +296,7 @@ metrics = {
     'position accuracy': position_accuracy,
     'pose accuracy': pose_accuracy,
     'position loss': position_loss,
-    'pose loss': pose_loss
+    'pose loss': pose_loss,
+    'total loss': total_loss
     # could add more metrics such as accuracy for each token type
 }
