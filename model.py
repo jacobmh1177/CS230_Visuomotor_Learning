@@ -131,6 +131,24 @@ class Net(nn.Module):
         out = F.dropout(F.relu(self.fcbn_3(self.fc_3(F.relu(self.fcbn_2(self.fc_2(layer_2_input)))))), p=self.dropout_rate, training=self.training)
         return self.fc_4(out)
 
+    def build_e(self):
+        self.fc_1 = nn.Linear(4 * self.pre_learned_output_dim, 1000)
+        self.fcbn_1 = nn.BatchNorm1d(1000)
+        self.fc_2 = nn.Linear(1000, 1000)
+        self.fcbn_2 = nn.BatchNorm1d(1000)
+        self.fc_3 = nn.Linear(1000, 500)
+        self.fcbn_3 = nn.BatchNorm1d(500)
+        self.fc_4 = nn.Linear(500, 500)
+        self.fcbn_4 = nn.BatchNorm1d(500)
+        self.fc_5 = nn.Linear(500, 128)
+        self.fcbn_5 = nn.BatchNorm1d(128)
+        self.fc_6 = nn.Linear(128, 6)
+    def forward_e(self, scene_encoding, obj_encoding):
+        stacked_input = torch.cat((scene_encoding, obj_encoding), -1)
+        out = F.dropout(F.relu(self.fcbn_5, self.fc_5(F.relu(self.fcbn_4(self.fc_4(F.relu(self.fcbn_3(self.fc_3(F.relu(self.fcbn_2(self.fc_2(F.relu(self.fcbn_1(self.fc_1(stacked_input)))))))))))))), p=self.dropout_rate, training=self.training)
+        out = self.fc_6(out)
+        return out
+
 
     def apply_transfer_learning(self, s):
         return self.pre_trained_model(s).data
@@ -165,6 +183,8 @@ class Net(nn.Module):
             return self.forward_c(scene_encoding, obj_encoding)
         elif model_architecture == 'D':
             return self.forward_d(scene_encoding, obj_encoding)
+        elif model_architecture == 'E':
+            return self.forward_e(scene_encoding, obj_encoding)
         else:
             # Create ResNet encodings for each input
             scene_rgb_encoding = self.apply_transfer_learning(s[:, :3, :, :])
@@ -255,12 +275,14 @@ def pose_accuracy(outputs, labels):
     return pose_accuracy / float(num_examples)
 
 def position_loss(outputs, labels):
-    position_loss = np.mean([np.sum(pow(outputs[i, :3] - labels[i, :3], 2)) for i in range(outputs.shape[0])])
-    return position_loss
+    #position_loss = np.mean([np.sum(pow(outputs[i, :3] - labels[i, :3], 2)) for i in range(outputs.shape[0])])
+    position_loss = sum([np.linalg.norm(outputs[i, :3] - labels[i, :3]) ** 2 for i in range(outputs.shape[0])])
+    return position_loss / float(outputs.shape[0])
 
 def pose_loss(outputs, labels):
-    pose_loss = np.mean([np.sum(pow(outputs[i, 3:] - labels[i, 3:], 2)) for i in range(outputs.shape[0])])
-    return pose_loss
+    #pose_loss = np.mean([np.sum(pow(outputs[i, 3:] - labels[i, 3:], 2)) for i in range(outputs.shape[0])])
+    pose_loss = sum([np.linalg.norm(outputs[i, 3:] - labels[i, 3:]) ** 2 for i in range(outputs.shape[0])])
+    return pose_loss / float(outputs.shape[0])
 
 
 # maintain all metrics required in this dictionary- these are used in the training and evaluation loops
