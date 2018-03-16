@@ -190,8 +190,8 @@ def loss_fn(outputs, labels):
         if 360 - pose_loss.data[i] < pose_loss.data[i]:
             pose_loss.data[i] = 360 - pose_loss.data[i]
     pose_loss = torch.mean(pose_loss)
-    print("Pose loss = {}".format(pose_loss.data[0]))
-    print("Position loss = {}".format(position_loss.data[0]))
+    #print("Pose loss = {}".format(pose_loss.data[0]))
+    #print("Position loss = {}".format(position_loss.data[0]))
     return pose_loss + position_loss
 
 def old_loss_fn(outputs, labels):
@@ -245,7 +245,7 @@ def position_accuracy(outputs, labels):
 def pose_accuracy(outputs, labels):
     num_examples = len(labels)
     labels = np.squeeze(labels)
-    pose_threshold = 15
+    pose_threshold = .26 #15 degrees
     # pose_loss = np.sum(
     #     (np.sqrt(np.sum(np.power((outputs[:, 3:] - labels[:, 3:]), 2), axis=-1)) > pose_threshold), axis=-1)
     # return 1.0 - (pose_loss / float(num_examples))

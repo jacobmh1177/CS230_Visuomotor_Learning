@@ -59,9 +59,10 @@ class SIMDataset(Dataset):
             rotation_axis = pose / np.linalg.norm(pose)
             angle = np.linalg.norm(pose)
             z, y, x = axangle2euler(rotation_axis, angle)
-            labels[i, 3] = x * (180./np.pi)
-            labels[i, 4] = y * (180./np.pi)
-            labels[i, 5] = z * (180./np.pi)
+            labels[i, 3] = x #* (180./np.pi)
+            labels[i, 4] = y #* (180./np.pi)
+            labels[i, 5] = z #* (180./np.pi)
+            #print x, y , z
         return labels
 
 

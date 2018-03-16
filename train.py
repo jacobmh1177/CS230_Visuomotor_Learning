@@ -198,7 +198,7 @@ if __name__ == '__main__':
     optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=params.learning_rate)
 
     # fetch loss function and metrics
-    loss_fn = net.loss_fn
+    loss_fn = torch.nn.MSELoss()#net.loss_fn
     metrics = net.metrics
 
     # Train the model
