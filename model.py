@@ -182,16 +182,17 @@ class Net(nn.Module):
 
 def loss_fn(outputs, labels):
     position_loss_coefficient = 100 # placeholder
-    position_loss = torch.mean(torch.sqrt((outputs[:, :3] - labels[:, :3]).pow(2)))
+    position_loss = torch.mean(torch.sqrt(torch.sum((outputs[:, :3] - labels[:, :3]).pow(2), dim=1)))
     position_loss = position_loss * position_loss_coefficient
 
-    pose_loss_1 = torch.mean(torch.sqrt((outputs[:, 3:] - labels[:, 3:]).pow(2)))
-    pose_loss_2 = torch.mean(Variable(torch.FloatTensor([360])) - torch.sqrt((outputs[:, 3:] - labels[:, 3:]).pow(2)))
-
-    if pose_loss_1.data[0] > pose_loss_2.data[0]:
-        return position_loss + pose_loss_2
-    else:
-        return position_loss + pose_loss_1
+    pose_loss = torch.sqrt(torch.sum((outputs[:, 3:] - labels[:, 3:]).pow(2), dim=1))
+    for i in range(pose_loss.size()[0]):
+        if 360 - pose_loss.data[i] < pose_loss.data[i]:
+            pose_loss.data[i] = 360 - pose_loss.data[i]
+    pose_loss = torch.mean(pose_loss)
+    print("Pose loss = {}".format(pose_loss.data[0]))
+    print("Position loss = {}".format(position_loss.data[0]))
+    return pose_loss + position_loss
 
 def old_loss_fn(outputs, labels):
     """
@@ -236,6 +237,7 @@ def position_accuracy(outputs, labels):
     pos_threshold = .05
     # pos_loss = np.sum(
     #     (np.sqrt(np.sum(np.power((outputs[:, :3] - labels[:, :3]), 2), axis=-1)) > pos_threshold), axis=-1)
+    #print [np.linalg.norm(outputs[i, :3] - labels[i, :3]) for i in range(outputs.shape[0])]
     pos_accuracy = sum([np.linalg.norm(outputs[i, :3] - labels[i, :3]) < pos_threshold for i in range(outputs.shape[0])])
     return pos_accuracy / float(num_examples)
 
