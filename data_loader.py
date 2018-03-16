@@ -38,9 +38,9 @@ class SIMDataset(Dataset):
         self.filenames = os.listdir(data_dir)
         self.batch_prefixes = [os.path.join(data_dir, f)[:-6] for f in self.filenames if f.endswith('_y.npz')]
         if "train" in data_dir:
-            self.batch_prefixes = self.batch_prefixes[:1]
+            self.batch_prefixes = self.batch_prefixes[:75]
         if "val" in data_dir:
-            self.batch_prefixes = self.batch_prefixes[:1]
+            self.batch_prefixes = self.batch_prefixes[:8]
         self.transform = transform
 
     def __len__(self):
@@ -111,7 +111,7 @@ def fetch_dataloader(types, data_dir, params):
     """
     dataloaders = {}
 
-    for split in ['train', 'val', 'test']:
+    for split in ['train', 'traindev', 'dev', 'test']:
         if split in types:
             path = os.path.join(data_dir, "{}".format(split))
 
