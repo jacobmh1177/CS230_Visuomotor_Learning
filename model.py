@@ -131,6 +131,7 @@ class Net(nn.Module):
         out = F.dropout(F.relu(self.fcbn_3(self.fc_3(F.relu(self.fcbn_2(self.fc_2(layer_2_input)))))), p=self.dropout_rate, training=self.training)
         return self.fc_4(out)
 
+
     def apply_transfer_learning(self, s):
         return self.pre_trained_model(s).data
 
@@ -253,10 +254,20 @@ def pose_accuracy(outputs, labels):
         [np.linalg.norm(outputs[i, 3:] - labels[i, 3:]) < pose_threshold for i in range(outputs.shape[0])])
     return pose_accuracy / float(num_examples)
 
+def position_loss(outputs, labels):
+    position_loss = np.mean([np.sum(np.pow(outputs[i, :3] - labels[i, :3], 2)) for i in range(outputs.shape[0])])
+    return position_loss
+
+def pose_loss(outputs, labels):
+    pose_loss = np.mean([np.sum(np.pow(outputs[i, 3:] - labels[i, 3:], 2)) for i in range(outputs.shape[0])])
+    return pose_loss
+
 
 # maintain all metrics required in this dictionary- these are used in the training and evaluation loops
 metrics = {
     'position accuracy': position_accuracy,
     'pose accuracy': pose_accuracy,
+    'position loss': position_loss,
+    'pose loss': pose_loss
     # could add more metrics such as accuracy for each token type
 }
