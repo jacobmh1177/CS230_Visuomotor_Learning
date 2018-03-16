@@ -145,7 +145,7 @@ class Net(nn.Module):
         self.fc_6 = nn.Linear(128, 6)
     def forward_e(self, scene_encoding, obj_encoding):
         stacked_input = torch.cat((scene_encoding, obj_encoding), -1)
-        out = F.dropout(F.relu(self.fcbn_5, self.fc_5(F.relu(self.fcbn_4(self.fc_4(F.relu(self.fcbn_3(self.fc_3(F.relu(self.fcbn_2(self.fc_2(F.relu(self.fcbn_1(self.fc_1(stacked_input)))))))))))))), p=self.dropout_rate, training=self.training)
+        out = F.dropout(F.relu(self.fcbn_5(self.fc_5(F.relu(self.fcbn_4(self.fc_4(F.relu(self.fcbn_3(self.fc_3(F.relu(self.fcbn_2(self.fc_2(F.relu(self.fcbn_1(self.fc_1(stacked_input)))))))))))))), p=self.dropout_rate, training=self.training)
         out = self.fc_6(out)
         return out
 
