@@ -255,11 +255,11 @@ def pose_accuracy(outputs, labels):
     return pose_accuracy / float(num_examples)
 
 def position_loss(outputs, labels):
-    position_loss = np.mean([np.sum(np.pow(outputs[i, :3] - labels[i, :3], 2)) for i in range(outputs.shape[0])])
+    position_loss = np.mean([np.sum(pow(outputs[i, :3] - labels[i, :3], 2)) for i in range(outputs.shape[0])])
     return position_loss
 
 def pose_loss(outputs, labels):
-    pose_loss = np.mean([np.sum(np.pow(outputs[i, 3:] - labels[i, 3:], 2)) for i in range(outputs.shape[0])])
+    pose_loss = np.mean([np.sum(pow(outputs[i, 3:] - labels[i, 3:], 2)) for i in range(outputs.shape[0])])
     return pose_loss
 
 
