@@ -18,7 +18,7 @@ parser.add_argument('--restore_file', default='best', help="name of the file in 
                      containing weights to load")
 
 
-def evaluate(model, pre_trained_model, loss_fn, dataloader, metrics, params):
+def evaluate(model, pre_trained_model, loss_fn, dataloader, metrics, params, model_dir):
     """Evaluate the model on `num_steps` batches.
 
     Args:
@@ -45,7 +45,9 @@ def evaluate(model, pre_trained_model, loss_fn, dataloader, metrics, params):
         # fetch the next evaluation batch
         data_batch, labels_batch = Variable(data_batch), Variable(labels_batch)
         data_batch = torch.squeeze(data_batch)
+        data_batch = data_batch.view(-1, 12, 224, 224) # resize for batch_size 
         labels_batch = torch.squeeze(labels_batch)
+        labels_batch = labels_batch.view(-1, 6)
         #data_batch = Variable(utils.apply_pre_trained_model(data_batch, pre_trained_model))
 
         # compute model output
@@ -65,7 +67,11 @@ def evaluate(model, pre_trained_model, loss_fn, dataloader, metrics, params):
     # compute mean of all metrics in summary
     metrics_mean = {metric: np.mean([x[metric] for x in summ]) for metric in summ[0]}
     metrics_string = " ; ".join("{}: {:05.3f}".format(k, v) for k, v in metrics_mean.items())
+    csv_string = ",".join("{:05.3f}".format(v) for v in metrics_mean.values())
     logging.info("- Eval metrics : " + metrics_string)
+    with open(os.path.join(model_dir, params.viz_file), 'a') as f:
+        f.write(csv_string)
+        f.write("\n")
     return metrics_mean
 
 
@@ -93,8 +99,8 @@ if __name__ == '__main__':
     logging.info("Creating the dataset...")
 
     # fetch dataloaders
-    dataloaders = data_loader.fetch_dataloader(['test'], args.data_dir, params)
-    test_dl = dataloaders['test']
+    dataloaders = data_loader.fetch_dataloader(['train', 'traindev','dev','test'], args.data_dir, params)
+    test_dl = dataloaders['train']
 
     logging.info("- done.")
 
@@ -110,6 +116,6 @@ if __name__ == '__main__':
     utils.load_checkpoint(os.path.join(args.model_dir, args.restore_file + '.pth.tar'), model)
 
     # Evaluate
-    test_metrics = evaluate(model, loss_fn, test_dl, metrics, params)
+    test_metrics = evaluate(model, None, loss_fn, test_dl, metrics, params, args.model_dir)
     save_path = os.path.join(args.model_dir, "metrics_test_{}.json".format(args.restore_file))
     utils.save_dict_to_json(test_metrics, save_path)

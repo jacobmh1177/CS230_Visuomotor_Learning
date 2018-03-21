@@ -24,7 +24,7 @@ parser.add_argument('--restore_file', default=None,
                     training")  # 'best' or 'train'
 
 
-def train(model, pre_trained_model, optimizer, loss_fn, dataloader, metrics, params, epoch):
+def train(model, pre_trained_model, optimizer, loss_fn, dataloader, metrics, params, epoch, model_dir):
     """Train the model on `num_steps` batches
 
     Args:
@@ -48,8 +48,11 @@ def train(model, pre_trained_model, optimizer, loss_fn, dataloader, metrics, par
     with tqdm(total=len(dataloader)) as t:
         for i, (train_batch, labels_batch) in enumerate(dataloader):
             train_batch = torch.squeeze(train_batch)
+            train_batch = train_batch.view(-1, 12, 224, 224) # resize for batch_size 
             labels_batch = torch.squeeze(labels_batch)
+            labels_batch = labels_batch.view(-1, 6)
             # move to GPU if available
+
             if params.cuda:
                 train_batch, labels_batch = train_batch.cuda(async=True), labels_batch.cuda(async=True)
             # convert to torch Variables
@@ -58,7 +61,7 @@ def train(model, pre_trained_model, optimizer, loss_fn, dataloader, metrics, par
             # compute model output and loss
             #print("Forward propagating")
             output_batch = model(train_batch)
-            loss = loss_fn(output_batch, labels_batch)
+            loss = 6 * loss_fn(output_batch, labels_batch)
             #print("Done forward propagating")
 
             # clear previous gradients, compute gradients of all variables wrt loss
@@ -69,7 +72,9 @@ def train(model, pre_trained_model, optimizer, loss_fn, dataloader, metrics, par
 
             # performs updates using calculated gradients
             optimizer.step()
-
+            #for p in model.parameters():     
+            #    if p.requires_grad: print('===========\ngradient=\n----------\n{}'.format(p.grad))
+            #exit(0)
             # Evaluate summaries only once in a while
             if i % params.save_summary_steps == 0:
                 # extract data from torch Variable, move to cpu, convert to numpy arrays
@@ -96,23 +101,26 @@ def train(model, pre_trained_model, optimizer, loss_fn, dataloader, metrics, par
     metrics_string = " ; ".join("{}: {:05.3f}".format(k, v) for k, v in metrics_mean.items())
     csv_string = ",".join("{:05.3f}".format(v) for v in metrics_mean.values())
     if epoch == 0:
-        with open(params.viz_file, 'w') as f:
+        with open(os.path.join(model_dir, params.viz_file), 'w') as f:
             f.write(",".join("{}".format(k) for k in metrics_mean.keys()))
+            f.write(", running_loss")
             f.write("\n")
-    with open(params.viz_file, 'a') as f:
+    with open(os.path.join(model_dir, params.viz_file), 'a') as f:
         f.write(csv_string)
+        f.write(", {}".format(loss_avg()))
         f.write("\n")
     logging.info("- Train metrics: " + metrics_string)
 
 
-def train_and_evaluate(model, pre_trained_model, train_dataloader, val_dataloader, optimizer, loss_fn, metrics, params, model_dir,
+def train_and_evaluate(model, pre_trained_model, train_dataloader, traindev_dataloader, dev_dataloader, optimizer, loss_fn, metrics, params, model_dir,
                        restore_file=None):
     """Train the model and evaluate every epoch.
 
     Args:
         model: (torch.nn.Module) the neural network
         train_dataloader: (DataLoader) a torch.utils.data.DataLoader object that fetches training data
-        val_dataloader: (DataLoader) a torch.utils.data.DataLoader object that fetches validation data
+        traindev_dataloader: (DataLoader) a torch.utils.data.DataLoader object that fetches traindev data
+        dev_dataloader: (DataLoader) a torch.utils.data.DataLoader object that fetches dev data
         optimizer: (torch.optim) optimizer for parameters of model
         loss_fn: a function that takes batch_output and batch_labels and computes the loss for the batch
         metrics: (dict) a dictionary of functions that compute a metric using the output and labels of each batch
@@ -126,40 +134,93 @@ def train_and_evaluate(model, pre_trained_model, train_dataloader, val_dataloade
         logging.info("Restoring parameters from {}".format(restore_path))
         utils.load_checkpoint(restore_path, model, optimizer)
 
-    best_val_acc = 0.0
+    best_traindev_acc = 0.0
+    best_dev_acc = 0.0
 
     for epoch in range(params.num_epochs):
         # Run one epoch
         logging.info("Epoch {}/{}".format(epoch + 1, params.num_epochs))
 
         # compute number of batches in one epoch (one full pass over the training set)
-        train(model, pre_trained_model, optimizer, loss_fn, train_dataloader, metrics, params, epoch)
+        train(model, pre_trained_model, optimizer, loss_fn, train_dataloader, metrics, params, epoch, model_dir)
 
         # Evaluate for one epoch on validation set
-        val_metrics = evaluate(model, pre_trained_model, loss_fn, val_dataloader, metrics, params)
+        traindev_metrics = evaluate(model, pre_trained_model, loss_fn, traindev_dataloader, metrics, params, model_dir)
+        #dev_metrics = evaluate(model, pre_trained_model, loss_fn, dev_dataloader, metrics, params)
 
-        val_acc = val_metrics['position accuracy']
-        is_best = val_acc>=best_val_acc
+        traindev_acc = traindev_metrics['position accuracy']
+        #dev_acc = dev_metrics['position accuracy']
+        is_best_traindev = traindev_acc>=best_traindev_acc
+        #is_best_dev = dev_acc>=best_dev_acc
+        is_best_dev = False
 
         # Save weights
         utils.save_checkpoint({'epoch': epoch + 1,
                                'state_dict': model.state_dict(),
                                'optim_dict' : optimizer.state_dict()},
-                               is_best=is_best,
-                               checkpoint=model_dir)
+                               is_best_traindev=is_best_traindev,
+                               is_best_dev=is_best_dev,
+                               checkpoint=model_dir, epoch=epoch+1)
 
         # If best_eval, best_save_path
-        if is_best:
+        if is_best_traindev:
             logging.info("- Found new best accuracy")
-            best_val_acc = val_acc
+            best_traindev_acc = traindev_acc
 
             # Save best val metrics in a json file in the model directory
-            best_json_path = os.path.join(model_dir, "metrics_val_best_weights.json")
-            utils.save_dict_to_json(val_metrics, best_json_path)
+            best_json_path = os.path.join(model_dir, "metrics_traindev_best_weights.json")
+            utils.save_dict_to_json(traindev_metrics, best_json_path)
+        #if is_best_dev:
+        #    logging.info("- Found new best accuracy")
+        #    best_dev_acc = dev_acc
+
+            # Save best val metrics in a json file in the model directory
+        #    best_json_path = os.path.join(model_dir, "metrics_dev_best_weights.json")
+        #    utils.save_dict_to_json(dev_metrics, best_json_path)
 
         # Save latest val metrics in a json file in the model directory
-        last_json_path = os.path.join(model_dir, "metrics_val_last_weights.json")
-        utils.save_dict_to_json(val_metrics, last_json_path)
+        last_json_path = os.path.join(model_dir, "metrics_traindev_last_weights.json")
+        utils.save_dict_to_json(traindev_metrics, last_json_path)
+        #last_json_path = os.path.join(model_dir, "metrics_dev_last_weights.json")
+        #utils.save_dict_to_json(dev_metrics, last_json_path)
+        
+        dev_metrics = evaluate(model, pre_trained_model, loss_fn, dev_dataloader, metrics, params, model_dir)
+        #dev_metrics = evaluate(model, pre_trained_model, loss_fn, dev_dataloader, metrics, params)
+
+        dev_acc = dev_metrics['position accuracy']
+        #dev_acc = dev_metrics['position accuracy']
+        is_best_dev = dev_acc>=best_dev_acc
+        is_best_dev = dev_acc>=best_dev_acc
+
+        # Save weights
+        utils.save_checkpoint({'epoch': epoch + 1,
+                               'state_dict': model.state_dict(),
+                               'optim_dict' : optimizer.state_dict()},
+                               is_best_traindev=is_best_traindev,
+                               is_best_dev=is_best_dev,
+                               checkpoint=model_dir, epoch=epoch+1)
+
+        # If best_eval, best_save_path
+        if is_best_dev:
+            logging.info("- Found new best dev accuracy")
+            best_dev_acc = dev_acc
+
+            # Save best val metrics in a json file in the model directory
+            best_json_path = os.path.join(model_dir, "metrics_dev_best_weights.json")
+            utils.save_dict_to_json(dev_metrics, best_json_path)
+        #if is_best_dev:
+        #    logging.info("- Found new best accuracy")
+        #    best_dev_acc = dev_acc
+
+            # Save best val metrics in a json file in the model directory
+        #    best_json_path = os.path.join(model_dir, "metrics_dev_best_weights.json")
+        #    utils.save_dict_to_json(dev_metrics, best_json_path)
+
+        # Save latest val metrics in a json file in the model directory
+        last_json_path = os.path.join(model_dir, "metrics_dev_last_weights.json")
+        utils.save_dict_to_json(traindev_metrics, last_json_path)
+        #last_json_path = os.path.join(model_dir, "metrics_dev_last_weights.json")
+        #utils.save_dict_to_json(dev_metrics, last_json_path)
 
 
 if __name__ == '__main__':
@@ -187,18 +248,21 @@ if __name__ == '__main__':
     logging.info("Loading the datasets...")
 
     # fetch dataloaders
-    dataloaders = data_loader.fetch_dataloader(['train', 'val'], args.data_dir, params)
+    dataloaders = data_loader.fetch_dataloader(['train', 'traindev', 'dev'], args.data_dir, params)
     train_dl = dataloaders['train']
-    val_dl = dataloaders['val']
+    traindev_dl = dataloaders['traindev']
+    #dev_dl = dataloaders['dev']
+    dev_dl = dataloaders['dev']
 
     logging.info("- done.")
 
     # Define the model and optimizer
     model = net.Net(params).cuda() if params.cuda else net.Net(params)
-    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=params.learning_rate)
+    print("There are {} trainable params in this model".format(sum(p.numel() for p in model.parameters() if p.requires_grad)))
+    optimizer = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=params.learning_rate, weight_decay=params.weight_decay)
 
     # fetch loss function and metrics
-    loss_fn = torch.nn.MSELoss()#net.loss_fn
+    loss_fn =  torch.nn.MSELoss()#net.loss_fn
     metrics = net.metrics
 
     # Train the model
@@ -208,5 +272,5 @@ if __name__ == '__main__':
         pre_trained_model = torch.nn.DataParallel(pre_trained_model).cuda()
     for param in pre_trained_model.parameters():
         param.requires_grad = False
-    train_and_evaluate(model, pre_trained_model, train_dl, val_dl, optimizer, loss_fn, metrics, params, args.model_dir,
+    train_and_evaluate(model, pre_trained_model, train_dl, traindev_dl, dev_dl, optimizer, loss_fn, metrics, params, args.model_dir,
                        args.restore_file)

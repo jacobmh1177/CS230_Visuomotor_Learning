@@ -1,11 +1,13 @@
 import random
 import os
 
+import cv2
 from torch.utils.data import Dataset, DataLoader
 import torchvision.transforms as transforms
 from torch import Tensor
 import numpy as np
 from transforms3d.taitbryan import axangle2euler
+import torch
 
 import utils
 
@@ -37,10 +39,12 @@ class SIMDataset(Dataset):
         """
         self.filenames = os.listdir(data_dir)
         self.batch_prefixes = [os.path.join(data_dir, f)[:-6] for f in self.filenames if f.endswith('_y.npz')]
-        if "train" in data_dir:
-            self.batch_prefixes = self.batch_prefixes[:75]
-        if "val" in data_dir:
-            self.batch_prefixes = self.batch_prefixes[:8]
+#        if "dev" in data_dir:
+#            self.batch_prefixes = self.batch_prefixes[:10]
+#        elif "traindev" in data_dir:
+#            self.batch_prefixes = self.batch_prefixes[:10]
+#        else:
+#            self.batch_prefixes = self.batch_prefixes[:10]
         self.transform = transform
 
     def __len__(self):
@@ -65,7 +69,15 @@ class SIMDataset(Dataset):
             #print x, y , z
         return labels
 
-
+    def normalize_inputs(self, inputs):
+        inpts = inputs/255.0 # scale inputs to [0, 1]
+        means = [0.485, 0.456, 0.406]
+        stds = [0.299, 0.224, 0.225]
+        for i in range(inputs.shape[0]):
+            for j in range(len(means)):
+                inputs[i, :, :, j] = (inputs[i, :, :, j] - means[j]) / stds[j]
+        return inputs
+        
     def __getitem__(self, idx):
         """
         Fetch index idx image and labels from dataset. Perform transforms on image.
@@ -78,10 +90,10 @@ class SIMDataset(Dataset):
             label: (int) corresponding label of image
         """
         batch_prefix = self.batch_prefixes[idx]
-        scene_rgb = self.crop(np.load(batch_prefix + "_X_scene_rgb.npz")['arr_0'], 224, 224)
-        scene_depth = self.crop(np.load(batch_prefix + "_X_scene_d.npz")['arr_0'], 224, 224)
-        obj_rgb = self.crop(np.load(batch_prefix + "_X_obj_rgb.npz")['arr_0'], 224, 224)
-        obj_depth = self.crop(np.load(batch_prefix + "_X_obj_d.npz")['arr_0'], 224, 224)
+        scene_rgb = self.normalize_inputs(self.crop(np.load(batch_prefix + "_X_scene_rgb.npz")['arr_0'], 224, 224))
+        scene_depth = self.normalize_inputs(self.crop(np.load(batch_prefix + "_X_scene_d.npz")['arr_0'], 224, 224))
+        obj_rgb = self.normalize_inputs(self.crop(np.load(batch_prefix + "_X_obj_rgb.npz")['arr_0'], 224, 224))
+        obj_depth = self.normalize_inputs(self.crop(np.load(batch_prefix + "_X_obj_d.npz")['arr_0'], 224, 224))
 
         # print(scene_rgb.shape)
         # print(scene_depth.shape)
@@ -89,7 +101,7 @@ class SIMDataset(Dataset):
         # print(obj_depth.shape)
         X = Tensor(np.concatenate([scene_rgb, scene_depth, obj_rgb, obj_depth], axis=-1))
         #X = np.swapaxes(X, 1, 3)
-        X = np.transpose(X, (0, 3, 1, 2))
+        X = Tensor(np.transpose(X, (0, 3, 1, 2)))
 
         y = Tensor(self.transform_pose(np.load(batch_prefix + "_y.npz")['arr_0']))
         # print(X.shape, y.shape)

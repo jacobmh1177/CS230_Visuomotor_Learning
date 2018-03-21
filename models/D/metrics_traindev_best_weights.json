@@ -1,0 +1,7 @@
+{
+    "position accuracy": 0.002,
+    "pose accuracy": 0.01,
+    "position loss": 0.14705167000267158,
+    "pose loss": 0.8158643366612632,
+    "loss": 0.9629160010814667
+}

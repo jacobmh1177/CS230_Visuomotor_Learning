@@ -202,8 +202,15 @@ class Net(nn.Module):
             s = self.fc3(s)
             return s
 
-
 def loss_fn(outputs, labels):
+#     print(outputs)
+#     print(labels)
+#     print((outputs - labels).pow(2))
+#     print(torch.sum((outputs - labels).pow(2), dim=1))
+#     print(torch.sqrt(torch.sum((outputs-labels).pow(2), dim=1)))
+    return torch.mean(torch.sum((outputs-labels).pow(2), dim=1))
+    
+def old_loss_fn(outputs, labels):
     position_loss_coefficient = 100 # placeholder
     position_loss = torch.mean(torch.sqrt(torch.sum((outputs[:, :3] - labels[:, :3]).pow(2), dim=1)))
     position_loss = position_loss * position_loss_coefficient
@@ -217,7 +224,7 @@ def loss_fn(outputs, labels):
     #print("Position loss = {}".format(position_loss.data[0]))
     return pose_loss + position_loss
 
-def old_loss_fn(outputs, labels):
+def older_loss_fn(outputs, labels):
     """
     Compute the cross entropy loss given outputs and labels.
 
@@ -278,12 +285,14 @@ def pose_accuracy(outputs, labels):
 
 def position_loss(outputs, labels):
     #position_loss = np.mean([np.sum(pow(outputs[i, :3] - labels[i, :3], 2)) for i in range(outputs.shape[0])])
-    position_loss = sum([np.linalg.norm(outputs[i, :3] - labels[i, :3]) ** 2 for i in range(outputs.shape[0])])
+#     print([np.linalg.norm(outputs[i, :] - labels[i, :]) for i in range(outputs.shape[0])])
+#     exit(0)
+    position_loss = sum([np.linalg.norm(outputs[i, :3] - labels[i, :3])**2 for i in range(outputs.shape[0])])
     return position_loss / float(outputs.shape[0])
 
 def pose_loss(outputs, labels):
     #pose_loss = np.mean([np.sum(pow(outputs[i, 3:] - labels[i, 3:], 2)) for i in range(outputs.shape[0])])
-    pose_loss = sum([np.linalg.norm(outputs[i, 3:] - labels[i, 3:]) ** 2 for i in range(outputs.shape[0])])
+    pose_loss = sum([np.linalg.norm(outputs[i, 3:] - labels[i, 3:])**2 for i in range(outputs.shape[0])])
     return pose_loss / float(outputs.shape[0])
 
 
